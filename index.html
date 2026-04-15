@@ -210,6 +210,37 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
 .save-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; padding: 13px; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; transition: opacity 0.2s; margin-top: 8px; }
 .save-btn:hover { opacity: 0.85; }
 
+/* PWA INSTALL BANNER */
+#pwa-install-banner {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, calc(100vw - 24px));
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(240,192,64,0.15);
+  z-index: 300;
+  animation: slideUp 0.3s ease;
+}
+#pwa-install-banner.show { display: flex; align-items: center; gap: 14px; }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.pwa-icon { width: 48px; height: 48px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+.pwa-text { flex: 1; min-width: 0; }
+.pwa-text strong { display: block; font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+.pwa-text span { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; line-height: 1.5; }
+.pwa-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.pwa-install-btn { background: var(--accent); color: var(--bg); border: none; padding: 9px 16px; border-radius: 8px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: opacity 0.2s; }
+.pwa-install-btn:hover { opacity: 0.85; }
+.pwa-dismiss-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 7px 16px; border-radius: 8px; font-family: 'Syne', sans-serif; font-size: 12px; cursor: pointer; text-align: center; transition: all 0.2s; }
+.pwa-dismiss-btn:hover { color: var(--text); border-color: var(--muted); }
+
 /* RESPONSIVE */
 @media (max-width: 650px) {
   header { padding: 14px 16px; }
@@ -291,6 +322,19 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
     <textarea id="week-notes" placeholder="Notes générales pour cette semaine..." oninput="saveWeekNotes()"></textarea>
   </div>
 </main>
+
+<!-- ===== PWA INSTALL BANNER ===== -->
+<div id="pwa-install-banner" role="dialog" aria-label="Installer l'application">
+  <div class="pwa-icon">⏱</div>
+  <div class="pwa-text">
+    <strong>Installer l'application</strong>
+    <span>Accès rapide depuis votre écran d'accueil, fonctionne hors ligne</span>
+  </div>
+  <div class="pwa-actions">
+    <button class="pwa-install-btn" id="pwa-install-btn">Installer</button>
+    <button class="pwa-dismiss-btn" id="pwa-dismiss-btn">Plus tard</button>
+  </div>
+</div>
 
 <!-- ===== CALENDAR MODAL ===== -->
 <div class="modal-overlay" id="cal-modal">
@@ -849,6 +893,40 @@ renderWeek();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
+
+// ================================================================
+// PWA INSTALL PROMPT
+// ================================================================
+let _deferredInstallPrompt = null;
+const _installBanner = document.getElementById('pwa-install-banner');
+const _installBtn = document.getElementById('pwa-install-btn');
+const _dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  // Don't show if user already dismissed this session
+  if (sessionStorage.getItem('pwa-dismissed')) return;
+  _deferredInstallPrompt = e;
+  _installBanner.classList.add('show');
+});
+
+_installBtn.addEventListener('click', async () => {
+  if (!_deferredInstallPrompt) return;
+  _installBanner.classList.remove('show');
+  _deferredInstallPrompt.prompt();
+  const { outcome } = await _deferredInstallPrompt.userChoice;
+  _deferredInstallPrompt = null;
+});
+
+_dismissBtn.addEventListener('click', () => {
+  _installBanner.classList.remove('show');
+  sessionStorage.setItem('pwa-dismissed', '1');
+});
+
+window.addEventListener('appinstalled', () => {
+  _installBanner.classList.remove('show');
+  _deferredInstallPrompt = null;
+});
 </script>
 </body>
 </html>
