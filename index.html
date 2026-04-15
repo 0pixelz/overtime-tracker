@@ -131,6 +131,18 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
 .clear-day-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-family: 'Syne', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.2s; margin-top: 14px; margin-left: auto; display: block; }
 .clear-day-btn:hover { color: var(--red); border-color: var(--red); }
 
+/* EDIT CONFIRMATION BANNER */
+.edit-confirm-banner { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.edit-confirm-banner .banner-text { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.edit-confirm-banner .banner-text strong { color: var(--accent); display: block; margin-bottom: 3px; font-size: 14px; }
+.confirm-edit-btn { background: var(--accent); color: var(--bg); border: none; padding: 10px 18px; border-radius: 8px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: opacity 0.2s; }
+.confirm-edit-btn:hover { opacity: 0.85; }
+.days-grid.locked .day-form input,
+.days-grid.locked .day-form select,
+.days-grid.locked .day-form textarea,
+.days-grid.locked .day-form button { pointer-events: none; opacity: 0.45; }
+#week-notes:disabled { opacity: 0.45; cursor: default; }
+
 /* WEEK NOTES */
 .week-notes { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 24px; }
 .week-notes h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
@@ -271,6 +283,7 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
     </div>
   </div>
 
+  <div id="edit-confirm-banner"></div>
   <div class="days-grid" id="days-container"></div>
 
   <div class="week-notes">
@@ -354,6 +367,7 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
 let settings = { requiredHours:7.5, defaultLunchMin:60, workDays:5, defaultStart:'08:00', defaultEnd:'16:30' };
 let currentWeekOffset = 0;
 let weekData = {};
+let editConfirmed = false;
 let calViewYear, calViewMonth;
 
 const DAY_NAMES = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
@@ -462,6 +476,17 @@ function renderWeek() {
   document.getElementById('week-dates').textContent=fmtDate(dates[0])+' — '+fmtDate(dates[4]);
   document.getElementById('week-notes').value=wd.notes||'';
 
+  const locked=currentWeekOffset!==0&&!editConfirmed;
+
+  // Confirmation banner
+  const bannerEl=document.getElementById('edit-confirm-banner');
+  if(locked){
+    const wType=currentWeekOffset<0?'passée':'à venir';
+    bannerEl.innerHTML=`<div class="edit-confirm-banner"><div class="banner-text"><strong>⚠ Semaine ${wType}</strong>Tu consultes une semaine hors de la semaine courante. Confirme pour pouvoir modifier les données.</div><button class="confirm-edit-btn" onclick="confirmEdit()">✏ Modifier cette semaine</button></div>`;
+  } else {
+    bannerEl.innerHTML='';
+  }
+
   const container=document.getElementById('days-container');
   container.innerHTML='';
   const numDays=settings.workDays===4?4:5;
@@ -469,8 +494,16 @@ function renderWeek() {
     const d=dates[i], ds=toDateStr(d), isToday=ds===getTodayStr();
     container.appendChild(createDayCard(i,d,ds,isToday,wd.days[ds]||null));
   }
+  if(locked) container.classList.add('locked'); else container.classList.remove('locked');
+
+  // Lock week notes for non-current unconfirmed weeks
+  const weekNotesEl=document.getElementById('week-notes');
+  weekNotesEl.disabled=locked;
+
   updateSummary();
 }
+
+function confirmEdit() { editConfirmed=true; renderWeek(); }
 
 function createDayCard(idx,date,dateStr,isToday,obj) {
   const calc=calcDay(obj);
@@ -635,8 +668,8 @@ function clearDay(dateStr) {
   const k=getWeekKey(currentWeekOffset);
   if(weekData[k]&&weekData[k].days[dateStr]){ delete weekData[k].days[dateStr]; saveAll(); renderWeek(); }
 }
-function changeWeek(dir) { currentWeekOffset+=dir; renderWeek(); }
-function goToCurrentWeek() { currentWeekOffset=0; renderWeek(); }
+function changeWeek(dir) { currentWeekOffset+=dir; editConfirmed=false; renderWeek(); }
+function goToCurrentWeek() { currentWeekOffset=0; editConfirmed=false; renderWeek(); }
 
 // ================================================================
 // SUMMARY
@@ -721,7 +754,7 @@ function renderCalendar() {
     if(weekHasData(weekKeyFromMonday(mon))) cell.classList.add('has-data-dot');
 
     cell.addEventListener('click',()=>{
-      currentWeekOffset=offsetForDate(date);
+      currentWeekOffset=offsetForDate(date); editConfirmed=false;
       renderWeek(); renderCalendar(); renderHistory();
       setTimeout(closeCalendar,280);
     });
@@ -776,7 +809,7 @@ function renderHistory() {
       </div>
     `;
     item.addEventListener('click',()=>{
-      currentWeekOffset=offset;
+      currentWeekOffset=offset; editConfirmed=false;
       renderWeek(); renderCalendar(); renderHistory();
       setTimeout(closeCalendar,200);
     });
