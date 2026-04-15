@@ -1,4 +1,4 @@
-const CACHE = 'sh-v1';
+const CACHE = 'sh-v2';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
