@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi des Heures</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f14;
+  --surface: #161820;
+  --surface2: #1e2029;
+  --border: #2a2d3a;
+  --text: #e8eaf0;
+  --muted: #5a5f75;
+  --accent: #f0c040;
+  --accent-dim: rgba(240,192,64,0.12);
+  --green: #3de8a0;
+  --green-dim: rgba(61,232,160,0.12);
+  --red: #ff5a7e;
+  --red-dim: rgba(255,90,126,0.12);
+  --blue: #5ba3ff;
+  --blue-dim: rgba(91,163,255,0.12);
+  --radius: 10px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+/* HEADER */
+header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 18px 32px; display: flex; align-items: center;
+  justify-content: space-between; position: sticky; top: 0; z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.logo h1 span { color: var(--accent); }
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.hdr-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.hdr-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* MAIN */
+main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+
+/* WEEK NAV */
+.week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 12px; }
+.week-label { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; text-align: center; flex: 1; }
+.week-label .week-dates { display: block; font-size: 13px; font-weight: 400; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+.nav-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); width: 40px; height: 40px; border-radius: var(--radius); font-size: 18px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.today-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.today-btn:hover { color: var(--text); border-color: var(--accent); }
+.cal-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 8px 12px; border-radius: var(--radius); font-size: 16px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.cal-btn:hover { color: var(--accent); border-color: var(--accent); }
+.cal-btn span { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; }
+
+/* SUMMARY CARDS */
+.summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px; }
+.summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.summary-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+.summary-card .value { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; }
+.summary-card.positive .value { color: var(--green); }
+.summary-card.negative .value { color: var(--red); }
+.summary-card.neutral .value { color: var(--accent); }
+.summary-card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'Space Mono', monospace; }
+
+/* PROGRESS */
+.week-progress { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 24px; }
+.week-progress h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 14px; }
+.progress-bar-wrap { background: var(--bg); border-radius: 99px; height: 10px; overflow: hidden; margin-bottom: 8px; }
+.progress-bar-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.4s ease; }
+.progress-bar-fill.over { background: var(--accent); }
+.progress-meta { display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted); }
+
+/* DAY CARDS */
+.days-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.day-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.2s; }
+.day-card.today { border-color: var(--accent); }
+.day-header { display: flex; align-items: center; padding: 14px 18px; gap: 16px; cursor: pointer; user-select: none; }
+.day-header:hover { background: var(--surface2); }
+.day-name { font-size: 15px; font-weight: 700; min-width: 110px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.today-badge { font-size: 9px; font-weight: 700; background: var(--accent); color: var(--bg); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.day-summary { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
+.time-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted); }
+.time-pill.filled { color: var(--text); }
+.time-pill span { color: var(--muted); font-size: 10px; }
+.note-pill { background: var(--blue-dim); border: 1px solid rgba(91,163,255,0.4); border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--blue); font-family: 'Space Mono', monospace; }
+.day-result { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.hours-badge { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; min-width: 70px; text-align: right; }
+.hours-badge.positive { color: var(--green); }
+.hours-badge.negative { color: var(--red); }
+.hours-badge.zero { color: var(--muted); }
+.hours-badge.empty { color: var(--muted); font-size: 12px; }
+.overtime-pill { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; min-width: 72px; text-align: center; }
+.overtime-pill.pos { background: var(--green-dim); color: var(--green); border: 1px solid rgba(61,232,160,0.4); }
+.overtime-pill.neg { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,90,126,0.4); }
+.overtime-pill.zero { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.toggle-arrow { color: var(--muted); font-size: 12px; transition: transform 0.2s; flex-shrink: 0; }
+.day-card.expanded .toggle-arrow { transform: rotate(180deg); }
+
+/* DAY FORM */
+.day-form { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border); }
+.day-card.expanded .day-form { display: block; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 16px; }
+.form-group label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 7px; }
+.form-group input, .form-group select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; font-family: 'Space Mono', monospace; font-size: 15px; transition: border-color 0.2s; outline: none; -webkit-appearance: none; }
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+.form-group select option { background: var(--bg); }
+.form-note { font-size: 12px; color: var(--muted); margin-top: 12px; font-family: 'Space Mono', monospace; padding: 10px 12px; background: var(--surface2); border-radius: 8px; border-left: 3px solid var(--accent); }
+.day-off-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.day-off-row label { font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.day-off-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
+/* TASK NOTES */
+.task-notes-section { margin-top: 18px; }
+.task-notes-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.task-notes-header .tn-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--blue); }
+.task-notes-header .tn-dot { width: 8px; height: 8px; background: var(--blue); border-radius: 50%; flex-shrink: 0; }
+.task-notes-section textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 8px; font-family: 'Space Mono', monospace; font-size: 13px; resize: vertical; min-height: 90px; outline: none; transition: border-color 0.2s; line-height: 1.7; }
+.task-notes-section textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-dim); }
+.task-notes-section textarea::placeholder { color: var(--muted); }
+.task-note-hint { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'Space Mono', monospace; }
+
+.clear-day-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; font-family: 'Syne', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.2s; margin-top: 14px; margin-left: auto; display: block; }
+.clear-day-btn:hover { color: var(--red); border-color: var(--red); }
+
+/* WEEK NOTES */
+.week-notes { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 24px; }
+.week-notes h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+.week-notes textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 8px; font-family: 'Space Mono', monospace; font-size: 13px; resize: vertical; min-height: 70px; outline: none; transition: border-color 0.2s; }
+.week-notes textarea:focus { border-color: var(--accent); }
+
+/* MODALS */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: min(540px, 95vw); max-height: 90vh; overflow-y: auto; }
+.modal h2 { font-size: 20px; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+.close-modal { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+.close-modal:hover { color: var(--text); }
+
+/* CALENDAR */
+.cal-month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; }
+.cal-month-label { font-size: 17px; font-weight: 800; text-align: center; flex: 1; }
+.cal-nav-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); width: 34px; height: 34px; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+.cal-nav-btn:hover { color: var(--text); border-color: var(--accent); }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.cal-dow { text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 6px 0 10px; }
+.cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 13px; font-family: 'Space Mono', monospace; border-radius: 6px; cursor: pointer; transition: all 0.15s; color: var(--muted); position: relative; }
+.cal-cell:hover { background: var(--surface2); color: var(--text); }
+.cal-cell.cur-month { color: var(--text); }
+.cal-cell.today-cell { color: var(--accent); font-weight: 700; }
+.cal-cell.today-cell::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background: var(--accent); border-radius: 50%; }
+.cal-cell.in-sel-week { background: var(--accent-dim); border-radius: 0; color: var(--accent); font-weight: 700; }
+.cal-cell.in-sel-week.wk-start { border-radius: 8px 0 0 8px; }
+.cal-cell.in-sel-week.wk-end { border-radius: 0 8px 8px 0; }
+.cal-cell.has-data-dot::before { content: ''; position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; background: var(--green); border-radius: 50%; }
+.cal-cell.empty-cell { pointer-events: none; }
+.cal-legend { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+.cal-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* HISTORY LIST */
+.history-section { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px; }
+.history-section h3 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
+.history-list { display: flex; flex-direction: column; gap: 6px; max-height: 210px; overflow-y: auto; padding-right: 2px; }
+.history-list::-webkit-scrollbar { width: 4px; }
+.history-list::-webkit-scrollbar-track { background: var(--surface2); border-radius: 4px; }
+.history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.history-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.15s; gap: 10px; }
+.history-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+.history-item.cur { border-color: var(--accent); background: var(--accent-dim); }
+.h-left { flex: 1; min-width: 0; }
+.h-week { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.h-cur-tag { font-size: 10px; color: var(--accent); font-weight: 400; }
+.h-dates { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+.h-notes-preview { font-size: 11px; color: var(--blue); margin-top: 3px; font-family: 'Space Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.h-overtime { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; }
+.h-overtime.pos { color: var(--green); }
+.h-overtime.neg { color: var(--red); }
+.h-overtime.zero { color: var(--muted); }
+.h-days-count { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+/* SETTINGS */
+.settings-group { margin-bottom: 20px; }
+.settings-group label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+.settings-group input, .settings-group select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 11px 14px; border-radius: 8px; font-family: 'Space Mono', monospace; font-size: 15px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+.settings-group input:focus, .settings-group select:focus { border-color: var(--accent); }
+.settings-group select option { background: var(--bg); }
+.settings-group .hint { font-size: 12px; color: var(--muted); margin-top: 6px; font-family: 'Space Mono', monospace; }
+.save-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; padding: 13px; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; transition: opacity 0.2s; margin-top: 8px; }
+.save-btn:hover { opacity: 0.85; }
+
+/* RESPONSIVE */
+@media (max-width: 650px) {
+  header { padding: 14px 16px; }
+  main { padding: 20px 12px; }
+  .summary-grid { grid-template-columns: repeat(2,1fr); }
+  .form-row { grid-template-columns: 1fr 1fr; }
+  .week-label { font-size: 16px; }
+  .day-name { min-width: 75px; font-size: 13px; }
+  .overtime-pill { display: none; }
+  .cal-btn span { display: none; }
+}
+@media (max-width: 400px) { .form-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⏱</div>
+    <h1>Suivi<span>Heures</span></h1>
+  </div>
+  <div class="header-actions">
+    <button class="hdr-btn" onclick="openCalendar()">📅 Calendrier</button>
+    <button class="hdr-btn" onclick="openSettings()">⚙ Paramètres</button>
+  </div>
+</header>
+
+<main>
+  <div class="week-nav">
+    <button class="nav-btn" onclick="changeWeek(-1)">‹</button>
+    <div class="week-label">
+      <span id="week-title">Semaine courante</span>
+      <span class="week-dates" id="week-dates"></span>
+    </div>
+    <button class="nav-btn" onclick="changeWeek(1)">›</button>
+    <button class="today-btn" onclick="goToCurrentWeek()">Aujourd'hui</button>
+    <button class="cal-btn" onclick="openCalendar()">📅 <span>Calendrier</span></button>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card neutral">
+      <div class="label">Heures travaillées</div>
+      <div class="value" id="total-worked">0:00</div>
+      <div class="sub" id="total-required-sub">/ 37h30 requis</div>
+    </div>
+    <div class="summary-card" id="card-overtime">
+      <div class="label">Overtime / Déficit</div>
+      <div class="value" id="total-overtime">0:00</div>
+      <div class="sub" id="overtime-days-sub">0 jour(s) saisi(s)</div>
+    </div>
+    <div class="summary-card neutral">
+      <div class="label">Lunch moyen</div>
+      <div class="value" id="avg-lunch">–</div>
+      <div class="sub">cette semaine</div>
+    </div>
+    <div class="summary-card neutral">
+      <div class="label">Jours saisis</div>
+      <div class="value" id="days-filled">0</div>
+      <div class="sub" id="days-filled-sub">sur 5 jours</div>
+    </div>
+  </div>
+
+  <div class="week-progress">
+    <h3>Progression de la semaine</h3>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="progress-meta">
+      <span id="progress-left">0h effectuées</span>
+      <span id="progress-right">37h30 requis</span>
+    </div>
+  </div>
+
+  <div class="days-grid" id="days-container"></div>
+
+  <div class="week-notes">
+    <h3>📝 Notes générales — semaine</h3>
+    <textarea id="week-notes" placeholder="Notes générales pour cette semaine..." oninput="saveWeekNotes()"></textarea>
+  </div>
+</main>
+
+<!-- ===== CALENDAR MODAL ===== -->
+<div class="modal-overlay" id="cal-modal">
+  <div class="modal">
+    <h2>📅 Choisir une semaine <button class="close-modal" onclick="closeCalendar()">✕</button></h2>
+
+    <div class="cal-month-nav">
+      <button class="cal-nav-btn" onclick="calChangeMonth(-1)">‹</button>
+      <div class="cal-month-label" id="cal-month-label"></div>
+      <button class="cal-nav-btn" onclick="calChangeMonth(1)">›</button>
+    </div>
+
+    <div class="cal-grid" id="cal-grid">
+      <div class="cal-dow">Lun</div><div class="cal-dow">Mar</div>
+      <div class="cal-dow">Mer</div><div class="cal-dow">Jeu</div>
+      <div class="cal-dow">Ven</div><div class="cal-dow">Sam</div>
+      <div class="cal-dow">Dim</div>
+    </div>
+
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="legend-dot" style="background:var(--accent)"></div> Semaine sélectionnée</div>
+      <div class="cal-legend-item"><div class="legend-dot" style="background:var(--green)"></div> Semaine avec données</div>
+      <div class="cal-legend-item"><div class="legend-dot" style="background:var(--accent);opacity:0.5"></div> Aujourd'hui</div>
+    </div>
+
+    <div class="history-section">
+      <h3>📋 Historique des semaines</h3>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS MODAL ===== -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h2>⚙ Paramètres <button class="close-modal" onclick="closeSettings()">✕</button></h2>
+    <div class="settings-group">
+      <label>Heures requises par jour (h)</label>
+      <input type="number" id="set-required" step="0.25" min="1" max="24" value="7.5">
+      <div class="hint">Ex: 7.5 = 7h30 incluant le lunch standard</div>
+    </div>
+    <div class="settings-group">
+      <label>Durée de lunch standard (minutes)</label>
+      <select id="set-lunch">
+        <option value="15">15 min</option><option value="30">30 min</option>
+        <option value="45">45 min</option><option value="60" selected>60 min (1h)</option>
+        <option value="90">90 min (1h30)</option>
+      </select>
+    </div>
+    <div class="settings-group">
+      <label>Jours ouvrables par semaine</label>
+      <select id="set-workdays">
+        <option value="5" selected>5 jours (Lun–Ven)</option>
+        <option value="4">4 jours</option>
+      </select>
+    </div>
+    <div class="settings-group">
+      <label>Heure d'arrivée habituelle</label>
+      <input type="time" id="set-start" value="08:00">
+    </div>
+    <div class="settings-group">
+      <label>Heure de départ habituelle</label>
+      <input type="time" id="set-end" value="16:30">
+    </div>
+    <button class="save-btn" onclick="saveSettings()">💾 Enregistrer</button>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+let settings = { requiredHours:7.5, defaultLunchMin:60, workDays:5, defaultStart:'08:00', defaultEnd:'16:30' };
+let currentWeekOffset = 0;
+let weekData = {};
+let calViewYear, calViewMonth;
+
+const DAY_NAMES = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const MONTH_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const LUNCH_OPTIONS = [0,15,20,30,45,60,75,90];
+
+// ================================================================
+// HELPERS
+// ================================================================
+const parseTime = t => { if (!t) return null; const [h,m]=t.split(':').map(Number); return h*60+m; };
+function minToHHMM(min, sign=false) {
+  const s = min<0?'-':(sign&&min>0?'+':'');
+  const a = Math.abs(min);
+  return s+Math.floor(a/60)+':'+String(a%60).padStart(2,'0');
+}
+function toDateStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function getTodayStr() { return toDateStr(new Date()); }
+function getMondayOf(offset) {
+  const n=new Date(), day=n.getDay(), diff=day===0?-6:1-day;
+  const m=new Date(n); m.setDate(n.getDate()+diff+offset*7); m.setHours(0,0,0,0); return m;
+}
+function getWeekDates(offset) {
+  const m=getMondayOf(offset);
+  return Array.from({length:7},(_,i)=>{ const d=new Date(m); d.setDate(m.getDate()+i); return d; });
+}
+function weekKeyFromMonday(monday) {
+  const yr=monday.getFullYear(), jan1=new Date(yr,0,1);
+  const wn=Math.ceil(((monday-jan1)/86400000+jan1.getDay()+1)/7);
+  return `${yr}-W${String(wn).padStart(2,'0')}`;
+}
+function getWeekKey(offset) { return weekKeyFromMonday(getMondayOf(offset)); }
+function offsetFromKey(key) { for(let o=-300;o<=300;o++) if(getWeekKey(o)===key) return o; return 0; }
+function offsetForDate(date) {
+  const n=new Date(); n.setHours(0,0,0,0);
+  const cDay=n.getDay(), cDiff=cDay===0?-6:1-cDay;
+  const cMon=new Date(n); cMon.setDate(n.getDate()+cDiff);
+  const tDay=date.getDay(), tDiff=tDay===0?-6:1-tDay;
+  const tMon=new Date(date); tMon.setDate(date.getDate()+tDiff);
+  return Math.round((tMon-cMon)/(7*864e5));
+}
+function fmtDate(d) { return d.toLocaleDateString('fr-CA',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtShort(d) { return d.toLocaleDateString('fr-CA',{day:'2-digit',month:'2-digit'}); }
+
+// ================================================================
+// PERSISTENCE
+// ================================================================
+function loadAll() {
+  try { const s=localStorage.getItem('sh_settings'); if(s) settings={...settings,...JSON.parse(s)}; } catch(e){}
+  try { const d=localStorage.getItem('sh_data'); if(d) weekData=JSON.parse(d); } catch(e){}
+}
+function saveAll() {
+  try { localStorage.setItem('sh_settings',JSON.stringify(settings)); localStorage.setItem('sh_data',JSON.stringify(weekData)); } catch(e){}
+}
+function getWData() {
+  const k=getWeekKey(currentWeekOffset);
+  if(!weekData[k]) weekData[k]={days:{},notes:''};
+  return weekData[k];
+}
+function saveWeekNotes() {
+  const k=getWeekKey(currentWeekOffset);
+  if(!weekData[k]) weekData[k]={days:{},notes:''};
+  weekData[k].notes=document.getElementById('week-notes').value;
+  saveAll();
+}
+
+// ================================================================
+// CALC
+// ================================================================
+function calcDay(obj) {
+  if(!obj||obj.dayOff) return {worked:null,overtime:null,lunchMin:null};
+  const s=parseTime(obj.start), e=parseTime(obj.end);
+  const l=obj.lunch!=null?Number(obj.lunch):settings.defaultLunchMin;
+  if(s==null||e==null||e<=s) return {worked:null,overtime:null,lunchMin:l};
+  const worked=(e-s)-l;
+  return {worked, overtime:worked-settings.requiredHours*60, lunchMin:l};
+}
+function calcWeekOT(key) {
+  const wd=weekData[key]; if(!wd) return null;
+  const offset=offsetFromKey(key), dates=getWeekDates(offset);
+  const numDays=settings.workDays===4?4:5;
+  let tot=0,any=false;
+  for(let i=0;i<numDays;i++) {
+    const obj=wd.days[toDateStr(dates[i])];
+    if(!obj||obj.dayOff) continue;
+    const c=calcDay(obj); if(c.overtime!=null){tot+=c.overtime;any=true;}
+  }
+  return any?tot:null;
+}
+function weekHasData(key) {
+  const wd=weekData[key]; if(!wd) return false;
+  return Object.keys(wd.days).length>0||(wd.notes&&wd.notes.trim().length>0);
+}
+
+// ================================================================
+// RENDER WEEK
+// ================================================================
+function renderWeek() {
+  const dates=getWeekDates(currentWeekOffset);
+  const key=getWeekKey(currentWeekOffset);
+  const wn=key.split('-W')[1];
+  const wd=getWData();
+
+  document.getElementById('week-title').textContent =
+    currentWeekOffset===0?`Semaine courante — S${wn}`:
+    currentWeekOffset<0?`Semaine ${wn} (passée)`:`Semaine ${wn} (à venir)`;
+  document.getElementById('week-dates').textContent=fmtDate(dates[0])+' — '+fmtDate(dates[4]);
+  document.getElementById('week-notes').value=wd.notes||'';
+
+  const container=document.getElementById('days-container');
+  container.innerHTML='';
+  const numDays=settings.workDays===4?4:5;
+  for(let i=0;i<numDays;i++) {
+    const d=dates[i], ds=toDateStr(d), isToday=ds===getTodayStr();
+    container.appendChild(createDayCard(i,d,ds,isToday,wd.days[ds]||null));
+  }
+  updateSummary();
+}
+
+function createDayCard(idx,date,dateStr,isToday,obj) {
+  const calc=calcDay(obj);
+  const hasData=obj&&(obj.start||obj.end||obj.dayOff);
+  const hasNotes=obj&&obj.taskNotes&&obj.taskNotes.trim().length>0;
+  const lunchVal=(obj&&obj.lunch!=null)?obj.lunch:settings.defaultLunchMin;
+  const dateLabel=date.toLocaleDateString('fr-CA',{day:'2-digit',month:'2-digit'});
+
+  const div=document.createElement('div');
+  div.className='day-card'+(isToday?' today':'')+(hasData?' has-data':'');
+
+  // Overtime pill
+  let otPill='';
+  if(calc.overtime!=null){
+    const cls=calc.overtime>0?'pos':calc.overtime<0?'neg':'zero';
+    const lbl=calc.overtime>0?'▲ '+minToHHMM(calc.overtime):calc.overtime<0?'▼ '+minToHHMM(calc.overtime):'✓ Exact';
+    otPill=`<span class="overtime-pill ${cls}">${lbl}</span>`;
+  }
+  // Hours badge
+  let hBadge='';
+  if(obj&&obj.dayOff) hBadge=`<span class="hours-badge zero">Congé</span>`;
+  else if(calc.worked!=null) hBadge=`<span class="hours-badge ${calc.overtime>0?'positive':calc.overtime<0?'negative':'zero'}">${minToHHMM(calc.worked)}</span>`;
+  else hBadge=`<span class="hours-badge empty">Non saisi</span>`;
+
+  // Time pills in header
+  let pills='';
+  if(obj&&!obj.dayOff){
+    if(obj.start) pills+=`<span class="time-pill filled"><span>↗</span> ${obj.start}</span>`;
+    if(obj.end) pills+=`<span class="time-pill filled"><span>↙</span> ${obj.end}</span>`;
+    if(obj.start||obj.end) pills+=`<span class="time-pill filled"><span>🍽</span> ${lunchVal}min</span>`;
+    if(hasNotes) pills+=`<span class="note-pill">📝 tâches</span>`;
+  }
+
+  // Lunch select options
+  const lunchOpts=LUNCH_OPTIONS.map(v=>`<option value="${v}" ${v==lunchVal?'selected':''}>${v===0?'Aucun (0 min)':v+' min'}</option>`).join('');
+
+  // Calc summary note
+  let calcNote='';
+  if(calc.worked!=null&&!obj?.dayOff){
+    const pres=parseTime(obj.end)-parseTime(obj.start);
+    calcNote=`<div class="form-note">
+      <strong>${minToHHMM(pres)}</strong> présence
+      &nbsp;−&nbsp;<strong>${minToHHMM(lunchVal)}</strong> lunch
+      &nbsp;=&nbsp;<strong>${minToHHMM(calc.worked)}</strong> travail net
+      &nbsp;→&nbsp;<strong style="color:${calc.overtime>=0?'var(--green)':'var(--red)'}">${minToHHMM(calc.overtime,true)} overtime</strong>
+    </div>`;
+  }
+
+  const dayOffChk=(obj&&obj.dayOff)?'checked':'';
+  const taskNotes=(obj&&obj.taskNotes)||'';
+  const hideFields=obj?.dayOff?'style="opacity:0.3;pointer-events:none"':'';
+  const hideTaskNotes=obj?.dayOff?'style="display:none"':'';
+
+  div.innerHTML=`
+    <div class="day-header" onclick="toggleDay(this)">
+      <span class="day-name">
+        ${DAY_NAMES[idx]}
+        <span style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;font-weight:400">${dateLabel}</span>
+        ${isToday?'<span class="today-badge">Auj.</span>':''}
+      </span>
+      <span class="day-summary">${pills}</span>
+      <span class="day-result">${otPill}${hBadge}</span>
+      <span class="toggle-arrow">▼</span>
+    </div>
+    <div class="day-form">
+      <div class="day-off-row">
+        <input type="checkbox" id="off-${dateStr}" ${dayOffChk} onchange="onDayOff('${dateStr}',this.checked)">
+        <label for="off-${dateStr}">Journée de congé / absent</label>
+      </div>
+      <div class="form-row" id="ff-${dateStr}" ${hideFields}>
+        <div class="form-group">
+          <label>Arrivée</label>
+          <input type="time" value="${(obj&&obj.start)||settings.defaultStart}" oninput="onField('${dateStr}','start',this.value)">
+        </div>
+        <div class="form-group">
+          <label>Départ</label>
+          <input type="time" value="${(obj&&obj.end)||settings.defaultEnd}" oninput="onField('${dateStr}','end',this.value)">
+        </div>
+        <div class="form-group">
+          <label>Lunch</label>
+          <select onchange="onField('${dateStr}','lunch',this.value)">${lunchOpts}</select>
+        </div>
+      </div>
+      ${calcNote}
+      <div class="task-notes-section" id="tn-${dateStr}" ${hideTaskNotes}>
+        <div class="task-notes-header">
+          <div class="tn-dot"></div>
+          <div class="tn-label">Tâches effectuées (overtime)</div>
+        </div>
+        <textarea
+          placeholder="Décris les tâches réalisées pendant ton overtime :&#10;• Réunion de budget Q3&#10;• Correctif urgent billet #4421&#10;• Revue du rapport mensuel&#10;• Appel client ABC..."
+          oninput="onTaskNotes('${dateStr}',this.value)"
+        >${taskNotes}</textarea>
+        <div class="task-note-hint">💡 Affiché dans l'historique du calendrier</div>
+      </div>
+      <button class="clear-day-btn" onclick="clearDay('${dateStr}')">✕ Effacer la journée</button>
+    </div>
+  `;
+
+  if(isToday||hasData) div.classList.add('expanded');
+  return div;
+}
+
+// ================================================================
+// INTERACTIONS
+// ================================================================
+function toggleDay(hdr) { hdr.closest('.day-card').classList.toggle('expanded'); }
+
+function getExpandedDates() {
+  return new Set([...document.querySelectorAll('.day-card.expanded')]
+    .map(c=>c.querySelector('[id^="off-"]')?.id?.replace('off-','')).filter(Boolean));
+}
+function expandDates(set) {
+  document.querySelectorAll('.day-card').forEach(c=>{
+    const id=c.querySelector('[id^="off-"]')?.id?.replace('off-','');
+    if(id&&set.has(id)) c.classList.add('expanded');
+  });
+}
+
+function onField(dateStr, field, value) {
+  const wd=getWData();
+  if(!wd.days[dateStr]) wd.days[dateStr]={start:settings.defaultStart,end:settings.defaultEnd,lunch:settings.defaultLunchMin};
+  wd.days[dateStr][field]=field==='lunch'?parseInt(value):value;
+  saveAll();
+  const exp=getExpandedDates(); exp.add(dateStr);
+  renderWeek(); expandDates(exp);
+}
+
+function onDayOff(dateStr, checked) {
+  const wd=getWData();
+  if(!wd.days[dateStr]) wd.days[dateStr]={};
+  wd.days[dateStr].dayOff=checked;
+  saveAll();
+  const exp=getExpandedDates(); exp.add(dateStr);
+  renderWeek(); expandDates(exp);
+}
+
+function onTaskNotes(dateStr, value) {
+  const wd=getWData();
+  if(!wd.days[dateStr]) wd.days[dateStr]={};
+  wd.days[dateStr].taskNotes=value;
+  saveAll();
+  // No full re-render needed
+}
+
+function clearDay(dateStr) {
+  const k=getWeekKey(currentWeekOffset);
+  if(weekData[k]&&weekData[k].days[dateStr]){ delete weekData[k].days[dateStr]; saveAll(); renderWeek(); }
+}
+function changeWeek(dir) { currentWeekOffset+=dir; renderWeek(); }
+function goToCurrentWeek() { currentWeekOffset=0; renderWeek(); }
+
+// ================================================================
+// SUMMARY
+// ================================================================
+function updateSummary() {
+  const wd=getWData(), numDays=settings.workDays===4?4:5;
+  const dates=getWeekDates(currentWeekOffset);
+  let tw=0,tot=0,filled=0,lt=0,lc=0;
+  const req=settings.requiredHours*60;
+  for(let i=0;i<numDays;i++){
+    const obj=wd.days[toDateStr(dates[i])]; if(!obj) continue;
+    if(obj.dayOff){filled++;continue;}
+    const c=calcDay(obj); if(c.worked!=null){tw+=c.worked;tot+=c.overtime;filled++;if(c.lunchMin!=null){lt+=c.lunchMin;lc++;}}
+  }
+  const wReq=req*numDays;
+  document.getElementById('total-worked').textContent=minToHHMM(tw);
+  document.getElementById('total-required-sub').textContent=`/ ${minToHHMM(wReq)} requis`;
+  document.getElementById('total-overtime').textContent=minToHHMM(tot,true);
+  document.getElementById('overtime-days-sub').textContent=`${filled} jour(s) saisi(s)`;
+  document.getElementById('card-overtime').className='summary-card '+(tot>0?'positive':tot<0?'negative':'neutral');
+  document.getElementById('avg-lunch').textContent=lc>0?Math.round(lt/lc)+' min':'–';
+  document.getElementById('days-filled').textContent=filled;
+  document.getElementById('days-filled-sub').textContent=`sur ${numDays} jours`;
+  const pct=wReq>0?Math.min((tw/wReq)*100,110):0;
+  const fill=document.getElementById('progress-fill');
+  fill.style.width=pct+'%'; fill.className='progress-bar-fill'+(tw>=wReq?' over':'');
+  document.getElementById('progress-left').textContent=minToHHMM(tw)+' effectuées';
+  document.getElementById('progress-right').textContent=minToHHMM(wReq)+' requis';
+}
+
+// ================================================================
+// CALENDAR MODAL
+// ================================================================
+function openCalendar() {
+  const now=new Date(); calViewYear=now.getFullYear(); calViewMonth=now.getMonth();
+  renderCalendar(); renderHistory();
+  document.getElementById('cal-modal').classList.add('open');
+}
+function closeCalendar() { document.getElementById('cal-modal').classList.remove('open'); }
+function calChangeMonth(dir) {
+  calViewMonth+=dir;
+  if(calViewMonth>11){calViewMonth=0;calViewYear++;}
+  if(calViewMonth<0){calViewMonth=11;calViewYear--;}
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent=`${MONTH_FR[calViewMonth]} ${calViewYear}`;
+
+  const selDates=new Set(getWeekDates(currentWeekOffset).map(d=>toDateStr(d)));
+  const todayStr=getTodayStr();
+  const firstDay=new Date(calViewYear,calViewMonth,1);
+  let startDow=firstDay.getDay(); startDow=startDow===0?6:startDow-1;
+  const daysInMonth=new Date(calViewYear,calViewMonth+1,0).getDate();
+
+  const grid=document.getElementById('cal-grid');
+  while(grid.children.length>7) grid.removeChild(grid.lastChild);
+
+  for(let i=0;i<startDow;i++){
+    const c=document.createElement('div'); c.className='cal-cell empty-cell'; grid.appendChild(c);
+  }
+
+  for(let d=1;d<=daysInMonth;d++){
+    const date=new Date(calViewYear,calViewMonth,d);
+    const ds=toDateStr(date);
+    const cell=document.createElement('div');
+    cell.className='cal-cell cur-month';
+    cell.textContent=d;
+
+    if(ds===todayStr) cell.classList.add('today-cell');
+
+    if(selDates.has(ds)){
+      cell.classList.add('in-sel-week');
+      const dow=date.getDay()===0?6:date.getDay()-1; // Mon=0
+      if(dow===0) cell.classList.add('wk-start');
+      if(dow===4) cell.classList.add('wk-end');
+    }
+
+    // Check if this week has data
+    const dow2=date.getDay(), diff=dow2===0?-6:1-dow2;
+    const mon=new Date(date); mon.setDate(date.getDate()+diff);
+    if(weekHasData(weekKeyFromMonday(mon))) cell.classList.add('has-data-dot');
+
+    cell.addEventListener('click',()=>{
+      currentWeekOffset=offsetForDate(date);
+      renderWeek(); renderCalendar(); renderHistory();
+      setTimeout(closeCalendar,280);
+    });
+    grid.appendChild(cell);
+  }
+}
+
+function renderHistory() {
+  const list=document.getElementById('history-list');
+  list.innerHTML='';
+  const keys=Object.keys(weekData).filter(k=>weekHasData(k)).sort((a,b)=>b.localeCompare(a));
+
+  if(keys.length===0){
+    list.innerHTML='<div style="color:var(--muted);font-size:12px;padding:10px;font-family:\'Space Mono\',monospace">Aucune semaine saisie pour l\'instant.</div>';
+    return;
+  }
+
+  const curKey=getWeekKey(currentWeekOffset);
+  keys.forEach(key=>{
+    const offset=offsetFromKey(key);
+    const dates=getWeekDates(offset);
+    const monday=dates[0], friday=dates[4];
+    const wd=weekData[key];
+    const ot=calcWeekOT(key);
+    const otStr=ot!=null?minToHHMM(ot,true):'–';
+    const otCls=ot==null?'zero':ot>0?'pos':ot<0?'neg':'zero';
+    const filledDays=Object.values(wd.days||{}).filter(d=>d.start||d.end||d.dayOff).length;
+
+    // Collect task notes from all days
+    const notesPreviews=Object.values(wd.days||{})
+      .filter(d=>d.taskNotes&&d.taskNotes.trim().length>0)
+      .map(d=>d.taskNotes.split('\n')[0].trim())
+      .filter(Boolean).slice(0,2);
+    const notesHtml=notesPreviews.length>0
+      ? `<div class="h-notes-preview">📝 ${notesPreviews.join(' · ')}</div>`
+      : '';
+
+    const item=document.createElement('div');
+    item.className='history-item'+(key===curKey?' cur':'');
+    item.innerHTML=`
+      <div class="h-left">
+        <div class="h-week">
+          Semaine ${key.split('-W')[1]}
+          ${key===curKey?'<span class="h-cur-tag">↑ actuelle</span>':''}
+        </div>
+        <div class="h-dates">${fmtShort(monday)} — ${fmtShort(friday)}</div>
+        ${notesHtml}
+      </div>
+      <div class="h-right">
+        <div class="h-overtime ${otCls}">${otStr}</div>
+        <div class="h-days-count">${filledDays}j saisis</div>
+      </div>
+    `;
+    item.addEventListener('click',()=>{
+      currentWeekOffset=offset;
+      renderWeek(); renderCalendar(); renderHistory();
+      setTimeout(closeCalendar,200);
+    });
+    list.appendChild(item);
+  });
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+function openSettings() {
+  document.getElementById('set-required').value=settings.requiredHours;
+  document.getElementById('set-lunch').value=settings.defaultLunchMin;
+  document.getElementById('set-workdays').value=settings.workDays;
+  document.getElementById('set-start').value=settings.defaultStart;
+  document.getElementById('set-end').value=settings.defaultEnd;
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+function saveSettings() {
+  settings.requiredHours=parseFloat(document.getElementById('set-required').value)||7.5;
+  settings.defaultLunchMin=parseInt(document.getElementById('set-lunch').value)||60;
+  settings.workDays=parseInt(document.getElementById('set-workdays').value)||5;
+  settings.defaultStart=document.getElementById('set-start').value||'08:00';
+  settings.defaultEnd=document.getElementById('set-end').value||'16:30';
+  saveAll(); closeSettings(); renderWeek();
+}
+
+document.getElementById('cal-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeCalendar(); });
+document.getElementById('settings-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeSettings(); });
+
+// ================================================================
+// INIT
+// ================================================================
+loadAll();
+renderWeek();
+</script>
+</body>
+</html>
