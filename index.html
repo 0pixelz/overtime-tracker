@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Suivi des Heures</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0c040">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Heures">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -335,6 +341,7 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
     <div class="settings-group">
       <label>Heure de départ habituelle</label>
       <input type="time" id="set-end" value="16:30">
+      <div class="hint">Recalculée automatiquement si tu changes l'arrivée (arrivée + 7h30 + lunch)</div>
     </div>
     <button class="save-btn" onclick="saveSettings()">💾 Enregistrer</button>
   </div>
@@ -583,10 +590,25 @@ function expandDates(set) {
   });
 }
 
+function calcFlexEnd(start, lunchMin) {
+  const s = parseTime(start);
+  if (s === null) return null;
+  const endMin = s + settings.requiredHours * 60 + lunchMin;
+  return String(Math.floor(endMin / 60) % 24).padStart(2,'0') + ':' + String(endMin % 60).padStart(2,'0');
+}
+
 function onField(dateStr, field, value) {
   const wd=getWData();
   if(!wd.days[dateStr]) wd.days[dateStr]={start:settings.defaultStart,end:settings.defaultEnd,lunch:settings.defaultLunchMin};
   wd.days[dateStr][field]=field==='lunch'?parseInt(value):value;
+
+  // Flexible hours: auto-update end = start + requiredHours + lunch
+  const day = wd.days[dateStr];
+  if ((field === 'start' || field === 'lunch') && day.start) {
+    const lunchMin = day.lunch != null ? Number(day.lunch) : settings.defaultLunchMin;
+    const newEnd = calcFlexEnd(day.start, lunchMin);
+    if (newEnd) day.end = newEnd;
+  }
   saveAll();
   const exp=getExpandedDates(); exp.add(dateStr);
   renderWeek(); expandDates(exp);
@@ -791,6 +813,9 @@ document.getElementById('settings-modal').addEventListener('click',e=>{ if(e.tar
 // ================================================================
 loadAll();
 renderWeek();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
