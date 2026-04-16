@@ -788,28 +788,35 @@ function confirmSaveDay(btn, dateStr) {
   const offChk = document.getElementById('off-' + dateStr);
   const wd = getWData();
   if (offChk && !offChk.checked) {
-    const ffRow = document.getElementById('ff-' + dateStr);
-    if (ffRow) {
-      const timeInputs = ffRow.querySelectorAll('input[type="time"]');
-      const lunchSel = ffRow.querySelector('select');
-      // Initialise with full defaults so the fallback chain always has valid values
-      if (!wd.days[dateStr]) wd.days[dateStr] = {
+    // Always guarantee a default entry exists before trying to read DOM inputs
+    if (!wd.days[dateStr]) {
+      wd.days[dateStr] = {
         start: settings.defaultStart || '08:00',
         end:   settings.defaultEnd   || '16:30',
         lunch: settings.defaultLunchMin != null ? settings.defaultLunchMin : 60
       };
-      // Fall back to existing saved value then to settings default when .value is empty
-      // (Android / iOS can return "" for time inputs created via innerHTML)
-      const existing = wd.days[dateStr];
-      if (timeInputs[0]) wd.days[dateStr].start = timeInputs[0].value || existing.start || settings.defaultStart || '08:00';
-      if (timeInputs[1]) wd.days[dateStr].end   = timeInputs[1].value || existing.end   || settings.defaultEnd   || '16:30';
+    }
+    // Ensure start/end are populated even if the entry was partially initialised (e.g. from onDayOff)
+    const existing = wd.days[dateStr];
+    if (!existing.start) existing.start = settings.defaultStart || '08:00';
+    if (!existing.end)   existing.end   = settings.defaultEnd   || '16:30';
+    if (existing.lunch == null) existing.lunch = settings.defaultLunchMin != null ? settings.defaultLunchMin : 60;
+
+    // Best-effort: override with the current DOM input values when they are non-empty
+    // (Android / iOS can return "" for time inputs created via innerHTML — keep the default in that case)
+    const ffRow = document.getElementById('ff-' + dateStr);
+    if (ffRow) {
+      const timeInputs = ffRow.querySelectorAll('input[type="time"]');
+      const lunchSel = ffRow.querySelector('select');
+      if (timeInputs[0] && timeInputs[0].value) existing.start = timeInputs[0].value;
+      if (timeInputs[1] && timeInputs[1].value) existing.end   = timeInputs[1].value;
       if (lunchSel) {
         // parseInt("0") === 0 which is falsy — use isNaN guard so 0-min lunch is preserved
         const lv = parseInt(lunchSel.value);
-        wd.days[dateStr].lunch = !isNaN(lv) ? lv : (existing.lunch != null ? existing.lunch : (settings.defaultLunchMin != null ? settings.defaultLunchMin : 60));
+        if (!isNaN(lv)) existing.lunch = lv;
       }
-      saveAll();
     }
+    saveAll();
   }
   btn.textContent = '✓ Sauvegardé!';
   btn.classList.add('saved');
