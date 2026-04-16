@@ -744,6 +744,8 @@ function onField(dateStr, field, value) {
   const wd=getWData();
   if(!wd.days[dateStr]) wd.days[dateStr]={start:settings.defaultStart,end:settings.defaultEnd,lunch:settings.defaultLunchMin};
   const newVal = field==='lunch'?parseInt(value):value;
+  // Reject empty time strings — can fire on mobile when time picker is dismissed
+  if (field !== 'lunch' && !newVal) return;
   // Skip re-render if nothing changed (prevents double-fire from oninput+onchange)
   if(wd.days[dateStr][field]===newVal) return;
   wd.days[dateStr][field]=newVal;
@@ -790,13 +792,22 @@ function confirmSaveDay(btn, dateStr) {
     if (ffRow) {
       const timeInputs = ffRow.querySelectorAll('input[type="time"]');
       const lunchSel = ffRow.querySelector('select');
-      if (!wd.days[dateStr]) wd.days[dateStr] = {};
+      // Initialise with full defaults so the fallback chain always has valid values
+      if (!wd.days[dateStr]) wd.days[dateStr] = {
+        start: settings.defaultStart || '08:00',
+        end:   settings.defaultEnd   || '16:30',
+        lunch: settings.defaultLunchMin != null ? settings.defaultLunchMin : 60
+      };
       // Fall back to existing saved value then to settings default when .value is empty
-      // (Android Chrome PWA can return "" for time inputs created via innerHTML)
+      // (Android / iOS can return "" for time inputs created via innerHTML)
       const existing = wd.days[dateStr];
-      if (timeInputs[0]) wd.days[dateStr].start = timeInputs[0].value || existing.start || settings.defaultStart;
-      if (timeInputs[1]) wd.days[dateStr].end   = timeInputs[1].value || existing.end   || settings.defaultEnd;
-      if (lunchSel) wd.days[dateStr].lunch = parseInt(lunchSel.value) || existing.lunch || settings.defaultLunchMin;
+      if (timeInputs[0]) wd.days[dateStr].start = timeInputs[0].value || existing.start || settings.defaultStart || '08:00';
+      if (timeInputs[1]) wd.days[dateStr].end   = timeInputs[1].value || existing.end   || settings.defaultEnd   || '16:30';
+      if (lunchSel) {
+        // parseInt("0") === 0 which is falsy — use isNaN guard so 0-min lunch is preserved
+        const lv = parseInt(lunchSel.value);
+        wd.days[dateStr].lunch = !isNaN(lv) ? lv : (existing.lunch != null ? existing.lunch : (settings.defaultLunchMin != null ? settings.defaultLunchMin : 60));
+      }
       saveAll();
     }
   }
