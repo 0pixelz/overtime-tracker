@@ -45,6 +45,14 @@ header {
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .hdr-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 8px 14px; border-radius: var(--radius); font-family: 'Syne', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
 .hdr-btn:hover { color: var(--text); border-color: var(--accent); }
+.hdr-install-btn { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); font-weight: 700; }
+.hdr-install-btn:hover { background: var(--accent); color: var(--bg); }
+/* PWA GUIDE MODAL */
+.pwa-guide-steps { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+.pwa-guide-step { display: flex; align-items: flex-start; gap: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.step-num { background: var(--accent); color: var(--bg); font-weight: 800; font-size: 13px; min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'Syne', sans-serif; }
+.pwa-guide-step p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text); }
+.pwa-guide-step p strong { color: var(--accent); }
 
 /* MAIN */
 main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
@@ -263,6 +271,7 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
     <h1>Suivi<span>Heures</span></h1>
   </div>
   <div class="header-actions">
+    <button class="hdr-btn hdr-install-btn" id="hdr-install-btn">📲 Installer</button>
     <button class="hdr-btn" onclick="openCalendar()">📅 Calendrier</button>
     <button class="hdr-btn" onclick="openSettings()">⚙ Paramètres</button>
   </div>
@@ -333,6 +342,27 @@ main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
   <div class="pwa-actions">
     <button class="pwa-install-btn" id="pwa-install-btn">Installer</button>
     <button class="pwa-dismiss-btn" id="pwa-dismiss-btn">Plus tard</button>
+  </div>
+</div>
+
+<!-- ===== PWA INSTALL GUIDE MODAL ===== -->
+<div class="modal-overlay" id="pwa-guide-modal">
+  <div class="modal">
+    <h2>📲 Installer l'application <button class="close-modal" onclick="closePwaGuide()">✕</button></h2>
+    <div class="pwa-guide-steps">
+      <div class="pwa-guide-step">
+        <div class="step-num">1</div>
+        <p>Appuyez sur le menu <strong>⋮</strong> en haut à droite de Chrome</p>
+      </div>
+      <div class="pwa-guide-step">
+        <div class="step-num">2</div>
+        <p>Sélectionnez <strong>« Ajouter à l'écran d'accueil »</strong> ou <strong>« Installer l'application »</strong></p>
+      </div>
+      <div class="pwa-guide-step">
+        <div class="step-num">3</div>
+        <p>Confirmez en appuyant sur <strong>« Ajouter »</strong> ou <strong>« Installer »</strong></p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -901,13 +931,20 @@ let _deferredInstallPrompt = null;
 const _installBanner = document.getElementById('pwa-install-banner');
 const _installBtn = document.getElementById('pwa-install-btn');
 const _dismissBtn = document.getElementById('pwa-dismiss-btn');
+const _hdrInstallBtn = document.getElementById('hdr-install-btn');
+
+// Hide install button if already running as installed PWA
+const _isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+if (_isStandalone) {
+  _hdrInstallBtn.style.display = 'none';
+}
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
-  // Don't show if user already dismissed this session
-  if (sessionStorage.getItem('pwa-dismissed')) return;
-  _deferredInstallPrompt = e;
-  _installBanner.classList.add('show');
+  _deferredInstallPrompt = e; // Always store so header button can use it
+  if (!sessionStorage.getItem('pwa-dismissed')) {
+    _installBanner.classList.add('show');
+  }
 });
 
 _installBtn.addEventListener('click', async () => {
@@ -923,9 +960,33 @@ _dismissBtn.addEventListener('click', () => {
   sessionStorage.setItem('pwa-dismissed', '1');
 });
 
+// Header install button: trigger native prompt or show manual guide
+_hdrInstallBtn.addEventListener('click', async () => {
+  if (_deferredInstallPrompt) {
+    _installBanner.classList.remove('show');
+    _deferredInstallPrompt.prompt();
+    const { outcome } = await _deferredInstallPrompt.userChoice;
+    _deferredInstallPrompt = null;
+    if (outcome === 'accepted') _hdrInstallBtn.style.display = 'none';
+  } else {
+    openPwaGuide();
+  }
+});
+
+function openPwaGuide() {
+  document.getElementById('pwa-guide-modal').classList.add('open');
+}
+function closePwaGuide() {
+  document.getElementById('pwa-guide-modal').classList.remove('open');
+}
+document.getElementById('pwa-guide-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePwaGuide();
+});
+
 window.addEventListener('appinstalled', () => {
   _installBanner.classList.remove('show');
   _deferredInstallPrompt = null;
+  _hdrInstallBtn.style.display = 'none';
 });
 </script>
 </body>
