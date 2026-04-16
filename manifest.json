@@ -1,4 +1,5 @@
 {
+  "id": "/overtime-tracker/",
   "name": "Suivi des Heures",
   "short_name": "Heures",
   "description": "Suivi hebdomadaire des heures et overtime",
@@ -6,8 +7,9 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0e0f14",
-  "theme_color": "#f0c040",
+  "background_color": "#d32f2f",
+  "theme_color": "#d32f2f",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icon-192.png",

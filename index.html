@@ -773,13 +773,28 @@ function clearDay(dateStr) {
   if(weekData[k]&&weekData[k].days[dateStr]){ delete weekData[k].days[dateStr]; saveAll(); renderWeek(); }
 }
 function confirmSaveDay(btn, dateStr) {
+  // Read current form values and persist them (in case oninput never fired)
+  const offChk = document.getElementById('off-' + dateStr);
+  const wd = getWData();
+  if (offChk && !offChk.checked) {
+    const ffRow = document.getElementById('ff-' + dateStr);
+    if (ffRow) {
+      const timeInputs = ffRow.querySelectorAll('input[type="time"]');
+      const lunchSel = ffRow.querySelector('select');
+      if (!wd.days[dateStr]) wd.days[dateStr] = {};
+      if (timeInputs[0]) wd.days[dateStr].start = timeInputs[0].value;
+      if (timeInputs[1]) wd.days[dateStr].end = timeInputs[1].value;
+      if (lunchSel) wd.days[dateStr].lunch = parseInt(lunchSel.value);
+      saveAll();
+    }
+  }
   btn.textContent = '✓ Sauvegardé!';
   btn.classList.add('saved');
+  const exp = getExpandedDates();
+  exp.delete(dateStr);
   setTimeout(() => {
-    const card = btn.closest('.day-card');
-    if(card) card.classList.remove('expanded');
-    btn.textContent = '✓ Confirmer';
-    btn.classList.remove('saved');
+    renderWeek();
+    expandDates(exp);
   }, 700);
 }
 function changeWeek(dir) { currentWeekOffset+=dir; editConfirmed=false; confirmedDays=new Set(); renderWeek(); }
