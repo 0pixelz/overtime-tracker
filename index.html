@@ -59,6 +59,79 @@
       --shadow: 0 1px 2px rgba(60,40,20,0.06), 0 4px 16px rgba(60,40,20,0.08);
     }
 
+    [data-theme="rouge"] {
+      color-scheme: light;
+      --bg: #fafafa;
+      --bg-elev: #ffffff;
+      --bg-elev-2: #f3eeee;
+      --border: #e2dcdc;
+      --border-strong: #cac0c0;
+      --text: #1a1212;
+      --text-dim: #5a4848;
+      --text-faint: #8a7878;
+      --accent: #c42d2d;
+      --accent-soft: rgba(196, 45, 45, 0.1);
+      --accent-text: #a82020;
+      --danger: #c42d2d;
+      --success: #4a8245;
+      --leave: #6b5fa8;
+      --shadow: 0 1px 2px rgba(60,20,20,0.06), 0 4px 16px rgba(60,20,20,0.08);
+    }
+
+    [data-theme="foret"] {
+      color-scheme: dark;
+      --bg: #0a0f0c;
+      --bg-elev: #121a15;
+      --bg-elev-2: #1a241e;
+      --border: #2a342c;
+      --border-strong: #3a4539;
+      --text: #ecf3ee;
+      --text-dim: #9fa9a1;
+      --text-faint: #606a62;
+      --accent: #4ac47a;
+      --accent-soft: rgba(74, 196, 122, 0.15);
+      --accent-text: #6ed594;
+      --danger: #e56b6b;
+      --success: #4ac47a;
+      --leave: #8a9fc4;
+    }
+
+    [data-theme="ocean"] {
+      color-scheme: dark;
+      --bg: #0a0e14;
+      --bg-elev: #121722;
+      --bg-elev-2: #1a2030;
+      --border: #2a3040;
+      --border-strong: #3a4155;
+      --text: #eaf0f8;
+      --text-dim: #9aa5b8;
+      --text-faint: #606a7c;
+      --accent: #5ea4e8;
+      --accent-soft: rgba(94, 164, 232, 0.15);
+      --accent-text: #7db8f0;
+      --danger: #e56b6b;
+      --success: #7bb876;
+      --leave: #b08fc4;
+    }
+
+    [data-theme="cassis"] {
+      color-scheme: dark;
+      --bg: #0f0a0f;
+      --bg-elev: #1a141d;
+      --bg-elev-2: #241d28;
+      --border: #312a38;
+      --border-strong: #403848;
+      --text: #f3ecf5;
+      --text-dim: #a89ea8;
+      --text-faint: #6a5f6e;
+      --accent: #d668c4;
+      --accent-soft: rgba(214, 104, 196, 0.15);
+      --accent-text: #e085d0;
+      --danger: #e56b6b;
+      --success: #7bb876;
+      --leave: #a87fc4;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
@@ -925,6 +998,209 @@
       opacity: 0.5;
       pointer-events: none;
     }
+
+    /* ============ SETTINGS SHEET ============ */
+    .settings-section { margin-bottom: 20px; }
+
+    .settings-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-faint);
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .theme-swatch {
+      background: var(--bg-elev-2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 8px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--text);
+      font-family: var(--font-body);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .theme-swatch:active { transform: scale(0.98); }
+
+    .theme-swatch.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .theme-preview {
+      aspect-ratio: 1.5;
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+      padding: 6px;
+      border: 1px solid rgba(128, 128, 128, 0.1);
+    }
+
+    .theme-preview-bar {
+      width: 70%;
+      height: 4px;
+      border-radius: 2px;
+      margin-right: auto;
+    }
+
+    .theme-preview-dot {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .theme-name {
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .settings-field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* Settings navigation */
+    .settings-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .settings-back {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-elev-2);
+      color: var(--text);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .settings-back:active { background: var(--border); }
+    .settings-back svg { width: 18px; height: 18px; }
+
+    .settings-header .sheet-title { margin-bottom: 0; }
+
+    .settings-view { animation: viewFade 0.25s ease; }
+    @keyframes viewFade {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      background: var(--bg-elev-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      color: var(--text);
+      font-family: var(--font-body);
+      transition: background 0.15s, transform 0.1s;
+    }
+    .settings-item:active { transform: scale(0.99); background: var(--bg-elev); }
+
+    .settings-item-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .settings-item-icon svg { width: 20px; height: 20px; }
+
+    .settings-item-text { flex: 1; min-width: 0; }
+    .settings-item-title { font-size: 15px; font-weight: 500; margin-bottom: 2px; }
+    .settings-item-desc { font-size: 12px; color: var(--text-dim); line-height: 1.35; }
+    .settings-item-value {
+      font-size: 12px;
+      color: var(--text-faint);
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+
+    .settings-chevron {
+      color: var(--text-faint);
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    /* Language picker */
+    .lang-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .lang-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      background: var(--bg-elev-2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .lang-item:active { transform: scale(0.99); }
+    .lang-item.active { border-color: var(--accent); background: var(--accent-soft); }
+
+    .lang-item-code {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--bg-elev);
+      color: var(--text);
+      display: grid; place-items: center;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    .lang-item.active .lang-item-code { background: var(--accent); color: #fff; }
+
+    .lang-item-name { flex: 1; }
+    .lang-item-native { font-size: 12px; color: var(--text-dim); font-weight: 400; }
+
+    .lang-item-check {
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+    .lang-item.active .lang-item-check { opacity: 1; }
   </style>
 </head>
 <body>
@@ -934,18 +1210,21 @@
 
   <header>
     <div class="brand">
-      <h1>Heures sup.</h1>
-      <div class="subtitle">Suivi hebdomadaire</div>
+      <h1 data-i18n="app.title">Heures sup.</h1>
+      <div class="subtitle" data-i18n="app.subtitle">Suivi hebdomadaire</div>
     </div>
     <div class="header-actions">
-      <button id="installBtn" class="icon-btn" title="Installer">
-        <span>⬇</span> <span>Installer</span>
+      <button id="installBtn" class="icon-btn" data-i18n-title="nav.install" title="Installer">
+        <span>⬇</span> <span data-i18n="nav.install">Installer</span>
       </button>
-      <button id="themeToggle" class="icon-btn" title="Changer le thème" aria-label="Changer de thème">
+      <button id="themeToggle" class="icon-btn" data-i18n-title="nav.theme" title="Changer le thème" aria-label="Changer de thème">
         <span id="themeIcon">☾</span>
       </button>
-      <button id="menuBtn" class="icon-btn" title="Menu" aria-label="Menu">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <button id="settingsBtn" class="icon-btn" data-i18n-title="nav.settings" title="Paramètres" aria-label="Paramètres">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <button id="menuBtn" class="icon-btn" data-i18n-title="nav.export" title="Exporter" aria-label="Exporter">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v5a2 2 0 002 2h12a2 2 0 002-2v-5"/><path d="M16 7l-4-4-4 4"/><path d="M12 3v13"/></svg>
       </button>
     </div>
   </header>
@@ -966,28 +1245,28 @@
   <!-- ENTRY CARD -->
   <div class="card">
     <div class="type-toggle">
-      <button id="typeWork" class="active" data-type="work">Travail</button>
-      <button id="typeLeave" data-type="leave">Congé</button>
+      <button id="typeWork" class="active" data-type="work" data-i18n="form.work">Travail</button>
+      <button id="typeLeave" data-type="leave" data-i18n="form.leave">Congé</button>
     </div>
 
     <!-- WORK FIELDS -->
     <div id="workFields">
       <div class="field-grid">
         <div class="field">
-          <label for="startTime">Début</label>
+          <label for="startTime" data-i18n="form.start">Début</label>
           <input type="time" id="startTime" value="08:00" />
         </div>
         <div class="field">
-          <label for="endTime">Fin</label>
+          <label for="endTime" data-i18n="form.end">Fin</label>
           <input type="time" id="endTime" value="16:30" />
         </div>
       </div>
       <div class="full-field">
-        <label for="mealSelect">Repas</label>
+        <label for="mealSelect" data-i18n="form.meal">Repas</label>
         <select id="mealSelect">
-          <option value="0">Aucun</option>
-          <option value="30">30 minutes</option>
-          <option value="60" selected>60 minutes</option>
+          <option value="0" data-i18n="form.mealNone">Aucun</option>
+          <option value="30" data-i18n="form.meal30">30 minutes</option>
+          <option value="60" selected data-i18n="form.meal60">60 minutes</option>
         </select>
       </div>
     </div>
@@ -995,24 +1274,25 @@
     <!-- LEAVE FIELDS -->
     <div id="leaveFields" class="hidden">
       <div class="full-field">
-        <label for="leaveSelect">Type de congé</label>
+        <label for="leaveSelect" data-i18n="form.leaveType">Type de congé</label>
         <select id="leaveSelect">
-          <option value="personal">Congé personnel</option>
-          <option value="birthday">Journée anniversaire</option>
-          <option value="vacation">Journée vacances</option>
+          <option value="personal" data-i18n="leave.personal">Congé personnel</option>
+          <option value="birthday" data-i18n="leave.birthday">Journée anniversaire</option>
+          <option value="vacation" data-i18n="leave.vacation">Journée vacances</option>
+          <option value="weekend" data-i18n="leave.weekend">Congé fin de semaine</option>
         </select>
       </div>
     </div>
 
     <div class="full-field">
-      <label for="noteInput">Note</label>
-      <textarea id="noteInput" placeholder="Raison du temps supplémentaire…"></textarea>
+      <label for="noteInput" data-i18n="form.note">Note</label>
+      <textarea id="noteInput" data-i18n-placeholder="form.notePlaceholder" placeholder="Détails de l'entrée…"></textarea>
     </div>
 
     <div class="day-summary">
       <div>
         <span class="save-pulse" id="savePulse"></span>
-        <span class="day-summary-label">Heures de la journée</span>
+        <span class="day-summary-label" data-i18n="form.dayHours">Heures de la journée</span>
       </div>
       <div>
         <span class="day-summary-value mono" id="dayHoursValue">0,00</span>
@@ -1025,7 +1305,7 @@
   <div class="card progress-card">
     <div class="progress-head">
       <div>
-        <div class="card-label">Progression</div>
+        <div class="card-label" data-i18n="progress.title">Progression</div>
         <div class="progress-value mono">
           <span id="weekHours">0,00</span>
           <span class="sep">/</span>
@@ -1048,12 +1328,12 @@
     <div class="cal-head">
       <div class="cal-month mono" id="calMonth">—</div>
       <div class="cal-nav">
-        <button id="calPrev" aria-label="Mois précédent">‹</button>
-        <button id="calToday" aria-label="Aujourd'hui" style="width:auto; padding:0 10px; border-radius:16px; font-size:11px;">Auj.</button>
-        <button id="calNext" aria-label="Mois suivant">›</button>
+        <button id="calPrev" data-i18n-title="nav.prevMonth" aria-label="Mois précédent">‹</button>
+        <button id="calToday" data-i18n-title="nav.todayFull" aria-label="Aujourd'hui" data-i18n="nav.today" style="width:auto; padding:0 10px; border-radius:16px; font-size:11px;">Auj.</button>
+        <button id="calNext" data-i18n-title="nav.nextMonth" aria-label="Mois suivant">›</button>
       </div>
     </div>
-    <div class="cal-weekdays">
+    <div class="cal-weekdays" id="calWeekdays">
       <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
     </div>
     <div class="cal-grid" id="calGrid"></div>
@@ -1061,23 +1341,23 @@
 
   <!-- WEEK LIST CARD -->
   <div class="card">
-    <div class="card-label">Ma semaine (lun – ven)</div>
+    <div class="card-label" data-i18n="week.title">Ma semaine (lun – ven)</div>
     <div class="week-list" id="weekList"></div>
   </div>
 
-  <footer>Données stockées localement</footer>
+  <footer data-i18n="app.footer">Données stockées localement</footer>
 
   <!-- EXPORT SHEET -->
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet-handle"></div>
-    <div class="sheet-title" id="sheetTitle">Exporter</div>
-    <div class="sheet-sub">Choisis une période, puis une destination</div>
+    <div class="sheet-title" id="sheetTitle" data-i18n="export.title">Exporter</div>
+    <div class="sheet-sub" data-i18n="export.subtitle">Choisis une période, puis une destination</div>
 
     <div class="sheet-period" id="sheetPeriod">
-      <button data-period="week" class="active">Cette semaine</button>
-      <button data-period="month">Ce mois</button>
-      <button data-period="all">Tout</button>
+      <button data-period="week" class="active" data-i18n="export.periodWeek">Cette semaine</button>
+      <button data-period="month" data-i18n="export.periodMonth">Ce mois</button>
+      <button data-period="all" data-i18n="export.periodAll">Tout</button>
     </div>
 
     <div class="sheet-count" id="sheetCount">—</div>
@@ -1087,8 +1367,8 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
       </div>
       <div class="sheet-action-text">
-        <div class="sheet-action-title">Envoyer par courriel</div>
-        <div class="sheet-action-desc">Ouvre ton application courriel avec le résumé</div>
+        <div class="sheet-action-title" data-i18n="export.email">Envoyer par courriel</div>
+        <div class="sheet-action-desc" data-i18n="export.emailDesc">Ouvre ton application courriel avec le résumé</div>
       </div>
     </button>
 
@@ -1097,8 +1377,8 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
       </div>
       <div class="sheet-action-text">
-        <div class="sheet-action-title">Envoyer vers OneNote</div>
-        <div class="sheet-action-desc">Via le menu partage (OneNote, Drive…)</div>
+        <div class="sheet-action-title" data-i18n="export.onenote">Envoyer vers OneNote</div>
+        <div class="sheet-action-desc" data-i18n="export.onenoteDesc">Via le menu partage (OneNote, Drive…)</div>
       </div>
     </button>
 
@@ -1107,10 +1387,112 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
       </div>
       <div class="sheet-action-text">
-        <div class="sheet-action-title">Sauvegarder localement</div>
-        <div class="sheet-action-desc">Télécharge un fichier CSV sur ton appareil</div>
+        <div class="sheet-action-title" data-i18n="export.download">Sauvegarder localement</div>
+        <div class="sheet-action-desc" data-i18n="export.downloadDesc">Télécharge un fichier CSV sur ton appareil</div>
       </div>
     </button>
+  </div>
+
+  <!-- SETTINGS SHEET -->
+  <div class="sheet-backdrop" id="settingsBackdrop"></div>
+  <div class="sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="sheet-handle"></div>
+    <div class="settings-header">
+      <button class="settings-back" id="settingsBack" aria-label="Retour" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="sheet-title" id="settingsTitle" data-i18n="settings.title">Paramètres</div>
+    </div>
+    <div class="sheet-sub" id="settingsSub" data-i18n="settings.subtitle">Personnalise l'application</div>
+
+    <!-- View: menu -->
+    <div class="settings-view" data-view="menu">
+      <button class="settings-item" data-goto="theme">
+        <div class="settings-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2a10 10 0 00-.38 19.99c.83.03 1.38-.66 1.38-1.49v-1a1 1 0 011-1h2a5 5 0 005-5V12A10 10 0 0012 2z"/></svg>
+        </div>
+        <div class="settings-item-text">
+          <div class="settings-item-title" data-i18n="settings.theme">Thème</div>
+          <div class="settings-item-desc" id="settingsThemeValue" data-i18n="settings.themeDesc">Apparence de l'application</div>
+        </div>
+        <div class="settings-chevron">›</div>
+      </button>
+
+      <button class="settings-item" data-goto="hours">
+        <div class="settings-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div class="settings-item-text">
+          <div class="settings-item-title" data-i18n="settings.hours">Horaires par défaut</div>
+          <div class="settings-item-desc" id="settingsHoursValue">—</div>
+        </div>
+        <div class="settings-chevron">›</div>
+      </button>
+
+      <button class="settings-item" data-goto="language">
+        <div class="settings-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        </div>
+        <div class="settings-item-text">
+          <div class="settings-item-title" data-i18n="settings.language">Langue</div>
+          <div class="settings-item-desc" id="settingsLangValue">—</div>
+        </div>
+        <div class="settings-chevron">›</div>
+      </button>
+    </div>
+
+    <!-- View: theme -->
+    <div class="settings-view hidden" data-view="theme">
+      <div class="theme-grid" id="themeGrid"></div>
+    </div>
+
+    <!-- View: hours -->
+    <div class="settings-view hidden" data-view="hours">
+      <div class="settings-section">
+        <div class="settings-field-grid">
+          <div class="field">
+            <label for="defStart" data-i18n="form.start">Début</label>
+            <input type="time" id="defStart" />
+          </div>
+          <div class="field">
+            <label for="defEnd" data-i18n="form.end">Fin</label>
+            <input type="time" id="defEnd" />
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="full-field">
+          <label for="defMeal" data-i18n="settings.mealDefault">Durée du repas par défaut</label>
+          <select id="defMeal">
+            <option value="0" data-i18n="form.mealNone">Aucun</option>
+            <option value="30" data-i18n="form.meal30">30 minutes</option>
+            <option value="60" data-i18n="form.meal60">60 minutes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- View: language -->
+    <div class="settings-view hidden" data-view="language">
+      <div class="lang-list" id="langList">
+        <button class="lang-item" data-lang="fr">
+          <div class="lang-item-code">FR</div>
+          <div class="lang-item-name">
+            Français
+            <div class="lang-item-native">Français (Canada)</div>
+          </div>
+          <div class="lang-item-check">✓</div>
+        </button>
+        <button class="lang-item" data-lang="en">
+          <div class="lang-item-code">EN</div>
+          <div class="lang-item-name">
+            English
+            <div class="lang-item-native">English</div>
+          </div>
+          <div class="lang-item-check">✓</div>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -1122,18 +1504,150 @@
     const WEEKLY_TARGET = 37.5;
     const DAILY_STANDARD = 7.5;
 
-    const LEAVE_LABELS = {
-      personal: 'Congé personnel',
-      birthday: 'Journée anniversaire',
-      vacation: 'Journée vacances'
-    };
 
     const state = {
       entries: {},
       currentDate: new Date(),
       calMonth: new Date(),
-      settings: { theme: 'dark' }
+      settings: {
+        theme: 'dark',
+        lang: 'fr',
+        defaults: { start: '08:00', end: '16:30', meal: 60 }
+      }
     };
+
+    const I18N = {
+      fr: {
+        app: { title: 'Heures sup.', subtitle: 'Suivi hebdomadaire', footer: 'Données stockées localement' },
+        nav: { install: 'Installer', theme: 'Changer de thème', settings: 'Paramètres', export: 'Exporter', prevMonth: 'Mois précédent', nextMonth: 'Mois suivant', today: 'Auj.', todayFull: "Aujourd'hui" },
+        day: { today: "aujourd'hui", yesterday: 'hier', tomorrow: 'demain' },
+        weekdays: ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'],
+        weekdayShort: ['L','M','M','J','V','S','D'], // Mon-Sun order (calendar starts Mon)
+        months: ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'],
+        monthsShort: ['janv.','févr.','mars','avr.','mai','juin','juill.','août','sept.','oct.','nov.','déc.'],
+        form: {
+          work: 'Travail', leave: 'Congé', start: 'Début', end: 'Fin', meal: 'Repas',
+          mealNone: 'Aucun', meal30: '30 minutes', meal60: '60 minutes',
+          leaveType: 'Type de congé', note: 'Note', notePlaceholder: "Détails de l'entrée…",
+          dayHours: 'Heures de la journée', overtime: 'Sup.'
+        },
+        leave: {
+          personal: 'Congé personnel', birthday: 'Journée anniversaire', vacation: 'Journée vacances', weekend: 'Congé fin de semaine',
+          personalShort: 'Personnel', birthdayShort: 'Anniversaire', vacationShort: 'Vacances', weekendShort: 'Fin de semaine'
+        },
+        progress: { title: 'Progression', hoursLeft: 'h restantes', hoursOvertime: 'h sup.' },
+        week: { title: 'Ma semaine (lun – ven)', total: 'Total semaine', supSuffix: 'sup.' },
+        export: {
+          title: 'Exporter', subtitle: 'Choisis une période, puis une destination',
+          periodWeek: 'Cette semaine', periodMonth: 'Ce mois', periodAll: 'Tout',
+          email: 'Envoyer par courriel', emailDesc: 'Ouvre ton application courriel avec le résumé',
+          onenote: 'Envoyer vers OneNote', onenoteDesc: 'Via le menu partage (OneNote, Drive…)',
+          download: 'Sauvegarder localement', downloadDesc: 'Télécharge un fichier CSV sur ton appareil',
+          noEntries: 'Aucune entrée pour cette période',
+          entries1: 'entrée', entriesN: 'entrées',
+          subject: 'Heures supplémentaires – ',
+          textHeader: 'HEURES SUPPLÉMENTAIRES',
+          total: 'Total: ', totalOvertime: 'Heures supplémentaires: ', leaveDays: 'Jours de congé: ',
+          weekTitle: (s, e) => 'semaine du ' + s + ' au ' + e,
+          monthTitle: (m, y) => m + ' ' + y,
+          allTitle: 'historique complet',
+          mealWord: 'repas'
+        },
+        settings: {
+          title: 'Paramètres', subtitle: 'Personnalise l\'application',
+          theme: 'Thème', themeDesc: 'Apparence de l\'application',
+          hours: 'Horaires par défaut', hoursDesc: 'Appliqués aux nouvelles journées',
+          language: 'Langue', languageDesc: 'Français ou anglais',
+          mealDefault: 'Durée du repas par défaut'
+        },
+        toast: {
+          deleted: 'Entrée supprimée', installed: 'Application installée',
+          installMenu: 'Utilisez le menu du navigateur pour installer',
+          shareCanceled: 'Partage annulé', shareNotSupported: 'Partage non supporté',
+          copied: 'Copié — colle dans OneNote', downloaded: 'Fichier téléchargé',
+          defaultSaved: 'Valeur par défaut enregistrée'
+        },
+        themes: { dark: 'Nuit ambrée', light: 'Clair ambré', rouge: 'Rouge', foret: 'Forêt', ocean: 'Océan', cassis: 'Cassis' },
+        csv: {
+          header: 'Date,Jour,Type,Debut,Fin,Repas (min),Heures,Heures sup.,Note',
+          total: 'TOTAL', typeWork: 'Travail', typeLeave: 'Congé '
+        }
+      },
+      en: {
+        app: { title: 'Overtime', subtitle: 'Weekly tracking', footer: 'Data stored locally' },
+        nav: { install: 'Install', theme: 'Change theme', settings: 'Settings', export: 'Export', prevMonth: 'Previous month', nextMonth: 'Next month', today: 'Today', todayFull: 'Today' },
+        day: { today: 'today', yesterday: 'yesterday', tomorrow: 'tomorrow' },
+        weekdays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+        weekdayShort: ['M','T','W','T','F','S','S'],
+        months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+        monthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        form: {
+          work: 'Work', leave: 'Leave', start: 'Start', end: 'End', meal: 'Meal',
+          mealNone: 'None', meal30: '30 minutes', meal60: '60 minutes',
+          leaveType: 'Leave type', note: 'Note', notePlaceholder: 'Entry details…',
+          dayHours: 'Hours today', overtime: 'OT'
+        },
+        leave: {
+          personal: 'Personal leave', birthday: 'Birthday off', vacation: 'Vacation day', weekend: 'Weekend off',
+          personalShort: 'Personal', birthdayShort: 'Birthday', vacationShort: 'Vacation', weekendShort: 'Weekend'
+        },
+        progress: { title: 'Progress', hoursLeft: 'h left', hoursOvertime: 'h OT' },
+        week: { title: 'My week (Mon – Fri)', total: 'Week total', supSuffix: 'OT' },
+        export: {
+          title: 'Export', subtitle: 'Choose a period, then a destination',
+          periodWeek: 'This week', periodMonth: 'This month', periodAll: 'All',
+          email: 'Send by email', emailDesc: 'Opens your email app with the summary',
+          onenote: 'Send to OneNote', onenoteDesc: 'Via share menu (OneNote, Drive…)',
+          download: 'Save locally', downloadDesc: 'Downloads a CSV file to your device',
+          noEntries: 'No entries for this period',
+          entries1: 'entry', entriesN: 'entries',
+          subject: 'Overtime hours – ',
+          textHeader: 'OVERTIME HOURS',
+          total: 'Total: ', totalOvertime: 'Overtime: ', leaveDays: 'Leave days: ',
+          weekTitle: (s, e) => 'week of ' + s + ' to ' + e,
+          monthTitle: (m, y) => m + ' ' + y,
+          allTitle: 'full history',
+          mealWord: 'meal'
+        },
+        settings: {
+          title: 'Settings', subtitle: 'Customize the app',
+          theme: 'Theme', themeDesc: 'App appearance',
+          hours: 'Default hours', hoursDesc: 'Applied to new days',
+          language: 'Language', languageDesc: 'French or English',
+          mealDefault: 'Default meal duration'
+        },
+        toast: {
+          deleted: 'Entry deleted', installed: 'App installed',
+          installMenu: 'Use the browser menu to install',
+          shareCanceled: 'Share canceled', shareNotSupported: 'Sharing not supported',
+          copied: 'Copied — paste into OneNote', downloaded: 'File downloaded',
+          defaultSaved: 'Default saved'
+        },
+        themes: { dark: 'Amber Night', light: 'Warm Paper', rouge: 'Red', foret: 'Forest', ocean: 'Ocean', cassis: 'Blackcurrant' },
+        csv: {
+          header: 'Date,Day,Type,Start,End,Meal (min),Hours,Overtime,Note',
+          total: 'TOTAL', typeWork: 'Work', typeLeave: 'Leave '
+        }
+      }
+    };
+
+    function t(path) {
+      const parts = path.split('.');
+      let v = I18N[state.settings.lang] || I18N.fr;
+      for (const p of parts) { if (!v) return path; v = v[p]; }
+      return v == null ? path : v;
+    }
+
+    const THEMES = [
+      { id: 'dark',   i18n: 'themes.dark',   bg: '#0f0e0d', fg: '#e8a046', isDark: true  },
+      { id: 'light',  i18n: 'themes.light',  bg: '#faf8f3', fg: '#c17a1f', isDark: false },
+      { id: 'rouge',  i18n: 'themes.rouge',  bg: '#ffffff', fg: '#c42d2d', isDark: false },
+      { id: 'foret',  i18n: 'themes.foret',  bg: '#0a0f0c', fg: '#4ac47a', isDark: true  },
+      { id: 'ocean',  i18n: 'themes.ocean',  bg: '#0a0e14', fg: '#5ea4e8', isDark: true  },
+      { id: 'cassis', i18n: 'themes.cassis', bg: '#0f0a0f', fg: '#d668c4', isDark: true  }
+    ];
+
+    const THEME_BY_ID = Object.fromEntries(THEMES.map(t => [t.id, t]));
 
     // ============ PERSISTENCE ============
     function loadState() {
@@ -1143,16 +1657,25 @@
       } catch(e) { state.entries = {}; }
       try {
         const s = localStorage.getItem(SETTINGS_KEY);
-        if (s) Object.assign(state.settings, JSON.parse(s));
+        if (s) {
+          const parsed = JSON.parse(s);
+          if (parsed.theme && THEME_BY_ID[parsed.theme]) state.settings.theme = parsed.theme;
+          if (parsed.lang && (parsed.lang === 'fr' || parsed.lang === 'en')) state.settings.lang = parsed.lang;
+          if (parsed.defaults) {
+            if (parsed.defaults.start) state.settings.defaults.start = parsed.defaults.start;
+            if (parsed.defaults.end) state.settings.defaults.end = parsed.defaults.end;
+            if (parsed.defaults.meal != null) state.settings.defaults.meal = parseInt(parsed.defaults.meal, 10);
+          }
+        }
       } catch(e) {}
     }
 
     function saveEntries() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries)); } catch(e) {}
     }
 
     function saveSettings() {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); } catch(e) {}
     }
 
     // ============ DATE UTILITIES ============
@@ -1179,31 +1702,40 @@
       return dateKey(a) === dateKey(b);
     }
 
-    const weekdayNames = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
-    const monthNames = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    const weekdayNames = () => t('weekdays');
+    const monthNames = () => t('months');
+    const monthNamesShort = () => t('monthsShort');
 
     function formatDayText(d) {
       const today = new Date();
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-      if (isSameDay(d, today)) return "aujourd'hui";
-      if (isSameDay(d, yesterday)) return 'hier';
-      if (isSameDay(d, tomorrow)) return 'demain';
-      return weekdayNames[d.getDay()];
+      const weekday = weekdayNames()[d.getDay()];
+      if (isSameDay(d, today)) return t('day.today') + ' ' + weekday;
+      if (isSameDay(d, yesterday)) return t('day.yesterday') + ' ' + weekday;
+      if (isSameDay(d, tomorrow)) return t('day.tomorrow') + ' ' + weekday;
+      return weekday;
     }
 
     function formatFullDate(d) {
-      return d.getDate() + ' ' + monthNames[d.getMonth()] + ' ' + d.getFullYear();
+      return d.getDate() + ' ' + monthNames()[d.getMonth()] + ' ' + d.getFullYear();
     }
 
     function formatHours(h) {
-      return h.toFixed(2).replace('.', ',');
+      const str = h.toFixed(2);
+      return state.settings.lang === 'fr' ? str.replace('.', ',') : str;
+    }
+
+    function formatShortDate(d) {
+      return d.getDate() + ' ' + monthNamesShort()[d.getMonth()];
     }
 
     // ============ CALCULATIONS ============
     function calcEntryHours(entry) {
       if (!entry) return 0;
-      if (entry.type === 'leave') return DAILY_STANDARD;
+      if (entry.type === 'leave') {
+        return entry.leaveType === 'weekend' ? 0 : DAILY_STANDARD;
+      }
       if (!entry.start || !entry.end) return 0;
       const [sh, sm] = entry.start.split(':').map(Number);
       const [eh, em] = entry.end.split(':').map(Number);
@@ -1263,9 +1795,15 @@
       dateFullText.textContent = formatFullDate(state.currentDate);
     }
 
+    function leaveShort(type) { return t('leave.' + type + 'Short') || t('form.leave'); }
+    function leaveLabel(type) { return t('leave.' + type) || t('form.leave'); }
+
     function renderForm() {
       const key = dateKey(state.currentDate);
       const entry = state.entries[key];
+      const dow = state.currentDate.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+
       if (entry && entry.type === 'leave') {
         typeLeave.classList.add('active');
         typeWork.classList.remove('active');
@@ -1273,14 +1811,22 @@
         leaveFields.classList.remove('hidden');
         leaveSelect.value = entry.leaveType || 'personal';
         noteInput.value = entry.note || '';
+      } else if (!entry && isWeekend) {
+        // Weekend default: Congé fin de semaine
+        typeLeave.classList.add('active');
+        typeWork.classList.remove('active');
+        workFields.classList.add('hidden');
+        leaveFields.classList.remove('hidden');
+        leaveSelect.value = 'weekend';
+        noteInput.value = '';
       } else {
         typeWork.classList.add('active');
         typeLeave.classList.remove('active');
         workFields.classList.remove('hidden');
         leaveFields.classList.add('hidden');
-        startTime.value = (entry && entry.start) || '08:00';
-        endTime.value = (entry && entry.end) || '16:30';
-        mealSelect.value = entry ? String(entry.meal) : '60';
+        startTime.value = (entry && entry.start) || state.settings.defaults.start;
+        endTime.value = (entry && entry.end) || state.settings.defaults.end;
+        mealSelect.value = entry ? String(entry.meal) : String(state.settings.defaults.meal);
         noteInput.value = (entry && entry.note) || '';
       }
       renderDaySummary();
@@ -1304,7 +1850,7 @@
       const ws = getWeekStart(state.currentDate);
       const we = new Date(ws); we.setDate(we.getDate() + 4); // Friday
       weekHours.textContent = formatHours(total);
-      weekRange.textContent = ws.getDate() + ' ' + monthNames[ws.getMonth()].slice(0,3) + '. – ' + we.getDate() + ' ' + monthNames[we.getMonth()].slice(0,3) + '.';
+      weekRange.textContent = ws.getDate() + ' ' + monthNamesShort()[ws.getMonth()] + ' – ' + we.getDate() + ' ' + monthNamesShort()[we.getMonth()];
 
       const pct = Math.min(100, (total / WEEKLY_TARGET) * 100);
       barFill.style.width = pct + '%';
@@ -1328,7 +1874,7 @@
     function renderCalendar() {
       const year = state.calMonth.getFullYear();
       const month = state.calMonth.getMonth();
-      calMonth.textContent = monthNames[month] + ' ' + year;
+      calMonth.textContent = monthNames()[month] + ' ' + year;
 
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
@@ -1393,16 +1939,12 @@
     }
 
     function renderTheme() {
-      document.documentElement.setAttribute('data-theme', state.settings.theme);
-      themeIcon.textContent = state.settings.theme === 'dark' ? '☾' : '☀';
-      themeColorMeta.setAttribute('content', state.settings.theme === 'dark' ? '#0f0e0d' : '#faf8f3');
+      const t = THEME_BY_ID[state.settings.theme] || THEMES[0];
+      document.documentElement.setAttribute('data-theme', t.id);
+      themeIcon.textContent = t.isDark ? '☾' : '☀';
+      themeColorMeta.setAttribute('content', t.bg);
     }
 
-    const LEAVE_SHORT = {
-      personal: 'Personnel',
-      birthday: 'Anniversaire',
-      vacation: 'Vacances'
-    };
 
     function renderWeekList() {
       const start = getWeekStart(state.currentDate);
@@ -1425,10 +1967,10 @@
         info.className = 'week-day-info';
         const label = document.createElement('div');
         label.className = 'week-day-label';
-        label.textContent = weekdayNames[d.getDay()];
+        label.textContent = weekdayNames()[d.getDay()];
         const sub = document.createElement('div');
         sub.className = 'week-day-sub';
-        sub.textContent = d.getDate() + ' ' + monthNames[d.getMonth()].slice(0, 3) + '.';
+        sub.textContent = d.getDate() + ' ' + monthNamesShort()[d.getMonth()];
         info.append(label, sub);
 
         const right = document.createElement('div');
@@ -1442,7 +1984,7 @@
           right.appendChild(hours);
         } else if (entry.type === 'leave') {
           hours.classList.add('leave');
-          hours.textContent = LEAVE_SHORT[entry.leaveType] || 'Congé';
+          hours.textContent = leaveShort(entry.leaveType);
           const extra = document.createElement('div');
           extra.className = 'week-day-extra';
           extra.textContent = formatHours(h) + ' h';
@@ -1549,7 +2091,7 @@
         delete state.entries[key];
         saveEntries();
         renderAll();
-        showToast('Entrée supprimée');
+        showToast(t('toast.deleted'));
       }
     }
 
@@ -1618,11 +2160,13 @@
       autoSave();
     });
 
-    // Theme toggle
+    // Theme toggle: switch between dark (Nuit ambrée) and light (Clair ambré)
     themeToggle.addEventListener('click', () => {
-      state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+      const t = THEME_BY_ID[state.settings.theme] || THEMES[0];
+      state.settings.theme = t.isDark ? 'light' : 'dark';
       saveSettings();
       renderTheme();
+      renderThemeGrid();
     });
 
     // PWA install prompt
@@ -1635,14 +2179,14 @@
 
     installBtn.addEventListener('click', async () => {
       if (!deferredPrompt) {
-        showToast('Utilisez le menu du navigateur pour installer');
+        showToast(t('toast.installMenu'));
         return;
       }
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       deferredPrompt = null;
       installBtn.classList.remove('show');
-      if (outcome === 'accepted') showToast('Application installée');
+      if (outcome === 'accepted') showToast(t('toast.installed'));
     });
 
     window.addEventListener('appinstalled', () => {
@@ -1663,6 +2207,7 @@
 
     // ============ INIT ============
     loadState();
+    applyI18n();
     renderTheme();
     state.calMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
     renderAll();
@@ -1742,12 +2287,12 @@
       if (period === 'week') {
         const ws = getWeekStart(state.currentDate);
         const we = new Date(ws); we.setDate(we.getDate() + 4);
-        return 'semaine du ' + ws.getDate() + ' ' + monthNames[ws.getMonth()].slice(0,3) + '. au ' + we.getDate() + ' ' + monthNames[we.getMonth()].slice(0,3) + '. ' + we.getFullYear();
+        return t('export.weekTitle')(formatShortDate(ws), formatShortDate(we) + ' ' + we.getFullYear());
       }
       if (period === 'month') {
-        return monthNames[state.currentDate.getMonth()] + ' ' + state.currentDate.getFullYear();
+        return t('export.monthTitle')(monthNames()[state.currentDate.getMonth()], state.currentDate.getFullYear());
       }
-      return 'historique complet';
+      return t('export.allTitle');
     }
 
     function formatPeriodSlug(period) {
@@ -1764,8 +2309,8 @@
     function updateSheetCount() {
       const n = getEntriesForPeriod(currentPeriod).length;
       sheetCount.textContent = n === 0
-        ? 'Aucune entrée pour cette période'
-        : n + (n === 1 ? ' entrée' : ' entrées');
+        ? t('export.noEntries')
+        : n + ' ' + (n === 1 ? t('export.entries1') : t('export.entriesN'));
       const empty = n === 0;
       document.querySelectorAll('.sheet-action').forEach(b => {
         b.toggleAttribute('disabled', empty);
@@ -1773,9 +2318,9 @@
     }
 
     function buildCSV(keys) {
-      const header = ['Date','Jour','Type','Debut','Fin','Repas (min)','Heures','Heures sup.','Note'];
-      const rows = [header.join(',')];
+      const rows = [t('csv.header')];
       let total = 0, sup = 0;
+      const numFmt = (n) => state.settings.lang === 'fr' ? n.toFixed(2).replace('.', ',') : n.toFixed(2);
       keys.forEach(k => {
         const e = state.entries[k];
         const d = parseKey(k);
@@ -1784,30 +2329,31 @@
         const overtime = e.type === 'leave' ? 0 : Math.max(0, h - DAILY_STANDARD);
         sup += overtime;
         const typeLabel = e.type === 'leave'
-          ? 'Congé ' + (LEAVE_SHORT[e.leaveType] || '').toLowerCase()
-          : 'Travail';
+          ? t('csv.typeLeave') + (leaveShort(e.leaveType) || '').toLowerCase()
+          : t('csv.typeWork');
         const note = (e.note || '').replace(/"/g, '""').replace(/\r?\n/g, ' ');
         rows.push([
           k,
-          weekdayNames[d.getDay()],
+          weekdayNames()[d.getDay()],
           typeLabel,
           e.start || '',
           e.end || '',
           e.type === 'leave' ? '' : (e.meal || 0),
-          h.toFixed(2).replace('.', ','),
-          overtime.toFixed(2).replace('.', ','),
+          numFmt(h),
+          numFmt(overtime),
           '"' + note + '"'
         ].join(','));
       });
       rows.push('');
-      rows.push(['TOTAL','','','','','', total.toFixed(2).replace('.', ','), sup.toFixed(2).replace('.', ','), ''].join(','));
+      rows.push([t('csv.total'),'','','','','', numFmt(total), numFmt(sup), ''].join(','));
       return rows.join('\r\n');
     }
 
     function buildText(keys, period) {
       const lines = [];
-      lines.push('HEURES SUPPLÉMENTAIRES');
-      lines.push(formatPeriodTitle(period).charAt(0).toUpperCase() + formatPeriodTitle(period).slice(1));
+      lines.push(t('export.textHeader'));
+      const title = formatPeriodTitle(period);
+      lines.push(title.charAt(0).toUpperCase() + title.slice(1));
       lines.push('─────────────────────────────');
       let total = 0, sup = 0, leaveCount = 0;
 
@@ -1816,31 +2362,31 @@
         const d = parseKey(k);
         const h = calcEntryHours(e);
         total += h;
-        const dateStr = pad(d.getDate()) + ' ' + monthNames[d.getMonth()].slice(0,3) + '.';
-        const dayName = weekdayNames[d.getDay()].padEnd(9);
+        const dateStr = pad(d.getDate()) + ' ' + monthNamesShort()[d.getMonth()];
+        const dayName = weekdayNames()[d.getDay()].padEnd(9);
         if (e.type === 'leave') {
           leaveCount++;
-          lines.push(`${dateStr} ${dayName} ${LEAVE_SHORT[e.leaveType] || 'Congé'} (${formatHours(h)} h)`);
+          lines.push(`${dateStr} ${dayName} ${leaveShort(e.leaveType)} (${formatHours(h)} h)`);
         } else {
           const overtime = Math.max(0, h - DAILY_STANDARD);
           sup += overtime;
-          const supStr = overtime > 0 ? `  [+${formatHours(overtime)} sup.]` : '';
-          lines.push(`${dateStr} ${dayName} ${e.start}–${e.end} · repas ${e.meal || 0} min · ${formatHours(h)} h${supStr}`);
+          const supStr = overtime > 0 ? `  [+${formatHours(overtime)} ${t('week.supSuffix')}]` : '';
+          lines.push(`${dateStr} ${dayName} ${e.start}–${e.end} · ${t('export.mealWord')} ${e.meal || 0} min · ${formatHours(h)} h${supStr}`);
         }
         if (e.note) lines.push(`            ↳ ${e.note}`);
       });
 
       lines.push('─────────────────────────────');
-      lines.push(`Total: ${formatHours(total)} h`);
-      if (sup > 0) lines.push(`Heures supplémentaires: +${formatHours(sup)} h`);
-      if (leaveCount > 0) lines.push(`Jours de congé: ${leaveCount}`);
+      lines.push(t('export.total') + formatHours(total) + ' h');
+      if (sup > 0) lines.push(t('export.totalOvertime') + '+' + formatHours(sup) + ' h');
+      if (leaveCount > 0) lines.push(t('export.leaveDays') + leaveCount);
       return lines.join('\n');
     }
 
     async function doEmail() {
       const keys = getEntriesForPeriod(currentPeriod);
       if (!keys.length) return;
-      const subject = 'Heures supplémentaires – ' + formatPeriodTitle(currentPeriod);
+      const subject = t('export.subject') + formatPeriodTitle(currentPeriod);
       const body = buildText(keys, currentPeriod);
       const href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
       closeSheet();
@@ -1850,19 +2396,19 @@
     async function doShare() {
       const keys = getEntriesForPeriod(currentPeriod);
       if (!keys.length) return;
-      const title = 'Heures sup. – ' + formatPeriodTitle(currentPeriod);
+      const title = t('export.subject') + formatPeriodTitle(currentPeriod);
       const text = buildText(keys, currentPeriod);
       closeSheet();
       if (navigator.share) {
         try { await navigator.share({ title, text }); }
-        catch (e) { if (e.name !== 'AbortError') showToast('Partage annulé'); }
+        catch (e) { if (e.name !== 'AbortError') showToast(t('toast.shareCanceled')); }
       } else if (navigator.clipboard) {
         try {
           await navigator.clipboard.writeText(text);
-          showToast('Copié — colle dans OneNote');
-        } catch { showToast('Partage non supporté'); }
+          showToast(t('toast.copied'));
+        } catch { showToast(t('toast.shareNotSupported')); }
       } else {
-        showToast('Partage non supporté sur ce navigateur');
+        showToast(t('toast.shareNotSupported'));
       }
     }
 
@@ -1881,7 +2427,7 @@
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       closeSheet();
-      showToast('Fichier téléchargé');
+      showToast(t('toast.downloaded'));
     }
 
     document.querySelectorAll('.sheet-action').forEach(btn => {
@@ -1891,6 +2437,219 @@
         else if (action === 'share') doShare();
         else if (action === 'download') doDownload();
       });
+    });
+
+    // ============ SETTINGS SHEET ============
+    const settingsBtn = $('settingsBtn');
+    const settingsSheet = $('settingsSheet');
+    const settingsBackdrop = $('settingsBackdrop');
+    const settingsBack = $('settingsBack');
+    const settingsTitle = $('settingsTitle');
+    const settingsSub = $('settingsSub');
+    const themeGrid = $('themeGrid');
+    const defStart = $('defStart');
+    const defEnd = $('defEnd');
+    const defMeal = $('defMeal');
+    let currentSettingsView = 'menu';
+
+    // Apply translations to the DOM (static text, placeholders, titles/aria-labels,
+    // calendar weekday letters, and the weekly target number).
+    function applyI18n() {
+      document.documentElement.lang = state.settings.lang;
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const val = t(el.dataset.i18n);
+        if (typeof val === 'string') el.textContent = val;
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const val = t(el.dataset.i18nPlaceholder);
+        if (typeof val === 'string') el.placeholder = val;
+      });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const val = t(el.dataset.i18nTitle);
+        if (typeof val === 'string') {
+          el.title = val;
+          el.setAttribute('aria-label', val);
+        }
+      });
+
+      const calWeekdays = $('calWeekdays');
+      if (calWeekdays) {
+        calWeekdays.innerHTML = '';
+        const letters = t('weekdayShort');
+        letters.forEach(L => {
+          const span = document.createElement('span');
+          span.textContent = L;
+          calWeekdays.appendChild(span);
+        });
+      }
+
+      const targetEl = document.querySelector('.progress-value .target');
+      if (targetEl) {
+        targetEl.textContent = state.settings.lang === 'fr' ? '37,5' : '37.5';
+      }
+    }
+
+    function updateSettingsValues() {
+      const theme = THEME_BY_ID[state.settings.theme];
+      const themeValueEl = $('settingsThemeValue');
+      if (themeValueEl) themeValueEl.textContent = theme ? t(theme.i18n) : '';
+
+      const d = state.settings.defaults;
+      const hoursValueEl = $('settingsHoursValue');
+      if (hoursValueEl) {
+        hoursValueEl.textContent = `${d.start} – ${d.end} · ${d.meal} min ${t('export.mealWord')}`;
+      }
+
+      const langValueEl = $('settingsLangValue');
+      if (langValueEl) {
+        langValueEl.textContent = state.settings.lang === 'fr' ? 'Français' : 'English';
+      }
+    }
+
+    function showSettingsView(view) {
+      currentSettingsView = view;
+      document.querySelectorAll('#settingsSheet [data-view]').forEach(el => {
+        el.classList.toggle('hidden', el.dataset.view !== view);
+      });
+      if (view === 'menu') {
+        settingsTitle.textContent = t('settings.title');
+        settingsSub.textContent = t('settings.subtitle');
+        settingsSub.classList.remove('hidden');
+        settingsBack.hidden = true;
+      } else {
+        const map = { theme: 'settings.theme', hours: 'settings.hours', language: 'settings.language' };
+        settingsTitle.textContent = t(map[view] || 'settings.title');
+        settingsSub.classList.add('hidden');
+        settingsBack.hidden = false;
+      }
+    }
+
+    function renderLangList() {
+      document.querySelectorAll('#langList .lang-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === state.settings.lang);
+      });
+    }
+
+    function renderThemeGrid() {
+      if (!themeGrid) return;
+      themeGrid.innerHTML = '';
+      THEMES.forEach(theme => {
+        const btn = document.createElement('button');
+        btn.className = 'theme-swatch';
+        if (theme.id === state.settings.theme) btn.classList.add('active');
+        btn.innerHTML = `
+          <div class="theme-preview" style="background:${theme.bg}">
+            <div class="theme-preview-dot" style="background:${theme.fg}"></div>
+            <div class="theme-preview-bar" style="background:${theme.fg}"></div>
+          </div>
+          <div class="theme-name">${t(theme.i18n)}</div>
+        `;
+        btn.addEventListener('click', () => {
+          state.settings.theme = theme.id;
+          saveSettings();
+          renderTheme();
+          renderThemeGrid();
+          updateSettingsValues();
+        });
+        themeGrid.appendChild(btn);
+      });
+    }
+
+    function openSettings() {
+      showSettingsView('menu');
+      renderThemeGrid();
+      renderLangList();
+      updateSettingsValues();
+      defStart.value = state.settings.defaults.start;
+      defEnd.value = state.settings.defaults.end;
+      defMeal.value = String(state.settings.defaults.meal);
+      settingsSheet.classList.add('open');
+      settingsBackdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSettings() {
+      settingsSheet.classList.remove('open');
+      settingsBackdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    settingsBtn.addEventListener('click', openSettings);
+    settingsBackdrop.addEventListener('click', closeSettings);
+    settingsBack.addEventListener('click', () => showSettingsView('menu'));
+
+    // Submenu navigation: tapping a menu row
+    document.querySelectorAll('#settingsSheet [data-goto]').forEach(btn => {
+      btn.addEventListener('click', () => showSettingsView(btn.dataset.goto));
+    });
+
+    // Language selection
+    document.querySelectorAll('#langList .lang-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lang = btn.dataset.lang;
+        if (lang === state.settings.lang) return;
+        state.settings.lang = lang;
+        saveSettings();
+        applyI18n();
+        renderLangList();
+        renderThemeGrid();
+        updateSettingsValues();
+        showSettingsView(currentSettingsView);
+        renderAll();
+      });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && settingsSheet.classList.contains('open')) {
+        if (currentSettingsView !== 'menu') showSettingsView('menu');
+        else closeSettings();
+      }
+    });
+
+    // Swipe-down: go back to menu from subview, otherwise close
+    let settingsTouchY = null;
+    settingsSheet.addEventListener('touchstart', (e) => {
+      if (e.target.closest('button, input, select, textarea')) return;
+      settingsTouchY = e.touches[0].clientY;
+    }, { passive: true });
+    settingsSheet.addEventListener('touchmove', (e) => {
+      if (settingsTouchY == null) return;
+      const dy = e.touches[0].clientY - settingsTouchY;
+      if (dy > 60) {
+        if (currentSettingsView !== 'menu') showSettingsView('menu');
+        else closeSettings();
+        settingsTouchY = null;
+      }
+    }, { passive: true });
+    settingsSheet.addEventListener('touchend', () => { settingsTouchY = null; });
+
+    defStart.addEventListener('change', () => {
+      if (defStart.value) {
+        state.settings.defaults.start = defStart.value;
+        saveSettings();
+        renderForm();
+        updateSettingsValues();
+        showToast(t('toast.defaultSaved'));
+      }
+    });
+
+    defEnd.addEventListener('change', () => {
+      if (defEnd.value) {
+        state.settings.defaults.end = defEnd.value;
+        saveSettings();
+        renderForm();
+        updateSettingsValues();
+        showToast(t('toast.defaultSaved'));
+      }
+    });
+
+    defMeal.addEventListener('change', () => {
+      state.settings.defaults.meal = parseInt(defMeal.value, 10);
+      saveSettings();
+      renderForm();
+      updateSettingsValues();
+      showToast(t('toast.defaultSaved'));
     });
   </script>
 </body>
