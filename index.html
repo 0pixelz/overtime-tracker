@@ -480,6 +480,38 @@
       100% { box-shadow: 0 0 0 8px transparent; opacity: 0.6; }
     }
 
+    /* ============ CLEAR DAY BUTTON ============ */
+    .clear-day-btn {
+      margin-top: 14px;
+      width: 100%;
+      padding: 11px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--danger);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .clear-day-btn:active { transform: scale(0.99); }
+    .clear-day-btn:hover { background: rgba(229, 107, 107, 0.06); }
+    .clear-day-btn.confirm {
+      border-color: var(--danger);
+      background: rgba(229, 107, 107, 0.14);
+      color: var(--danger);
+    }
+    [data-theme="light"] .clear-day-btn:hover,
+    [data-theme="rouge"] .clear-day-btn:hover { background: rgba(193, 77, 77, 0.06); }
+    [data-theme="light"] .clear-day-btn.confirm,
+    [data-theme="rouge"] .clear-day-btn.confirm { background: rgba(193, 77, 77, 0.1); }
+    .clear-day-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
     /* ============ PROGRESS BAR ============ */
     .progress-card .progress-head {
       display: flex;
@@ -1299,6 +1331,11 @@
         <span id="overtimeBadge" class="overtime-badge hidden">Sup.</span>
       </div>
     </div>
+
+    <button id="clearDayBtn" class="clear-day-btn hidden" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+      <span id="clearDayText" data-i18n="form.clearDay">Effacer cette journée</span>
+    </button>
   </div>
 
   <!-- PROGRESS CARD -->
@@ -1341,7 +1378,7 @@
 
   <!-- WEEK LIST CARD -->
   <div class="card">
-    <div class="card-label" data-i18n="week.title">Ma semaine (lun – ven)</div>
+    <div class="card-label" id="weekCardLabel">Ma semaine (lun – ven)</div>
     <div class="week-list" id="weekList"></div>
   </div>
 
@@ -1439,6 +1476,17 @@
         </div>
         <div class="settings-chevron">›</div>
       </button>
+
+      <button class="settings-item" data-goto="week">
+        <div class="settings-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M8 2v4M16 2v4"/></svg>
+        </div>
+        <div class="settings-item-text">
+          <div class="settings-item-title" data-i18n="settings.week">Semaine</div>
+          <div class="settings-item-desc" id="settingsWeekValue">—</div>
+        </div>
+        <div class="settings-chevron">›</div>
+      </button>
     </div>
 
     <!-- View: theme -->
@@ -1493,6 +1541,28 @@
         </button>
       </div>
     </div>
+
+    <!-- View: week -->
+    <div class="settings-view hidden" data-view="week">
+      <div class="lang-list" id="weekList2">
+        <button class="lang-item" data-week="mon_fri">
+          <div class="lang-item-code">5J</div>
+          <div class="lang-item-name">
+            <span data-i18n="calendarType.mon_fri">Lundi au vendredi</span>
+            <div class="lang-item-native" data-i18n="calendarType.mon_fri_desc">Semaine de travail (5 jours)</div>
+          </div>
+          <div class="lang-item-check">✓</div>
+        </button>
+        <button class="lang-item" data-week="sun_sat">
+          <div class="lang-item-code">7J</div>
+          <div class="lang-item-name">
+            <span data-i18n="calendarType.sun_sat">Dimanche au samedi</span>
+            <div class="lang-item-native" data-i18n="calendarType.sun_sat_desc">Semaine complète (7 jours)</div>
+          </div>
+          <div class="lang-item-check">✓</div>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -1512,6 +1582,7 @@
       settings: {
         theme: 'dark',
         lang: 'fr',
+        calendarType: 'mon_fri',
         defaults: { start: '08:00', end: '16:30', meal: 60 }
       }
     };
@@ -1522,21 +1593,22 @@
         nav: { install: 'Installer', theme: 'Changer de thème', settings: 'Paramètres', export: 'Exporter', prevMonth: 'Mois précédent', nextMonth: 'Mois suivant', today: 'Auj.', todayFull: "Aujourd'hui" },
         day: { today: "aujourd'hui", yesterday: 'hier', tomorrow: 'demain' },
         weekdays: ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'],
-        weekdayShort: ['L','M','M','J','V','S','D'], // Mon-Sun order (calendar starts Mon)
+        weekdayShort: ['D','L','M','M','J','V','S'], // Sun-Sat order; reordered at render based on week start
         months: ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'],
         monthsShort: ['janv.','févr.','mars','avr.','mai','juin','juill.','août','sept.','oct.','nov.','déc.'],
         form: {
           work: 'Travail', leave: 'Congé', start: 'Début', end: 'Fin', meal: 'Repas',
           mealNone: 'Aucun', meal30: '30 minutes', meal60: '60 minutes',
           leaveType: 'Type de congé', note: 'Note', notePlaceholder: "Détails de l'entrée…",
-          dayHours: 'Heures de la journée', overtime: 'Sup.'
+          dayHours: 'Heures de la journée', overtime: 'Sup.',
+          clearDay: 'Effacer cette journée', clearDayConfirm: 'Confirmer l\'effacement'
         },
         leave: {
           personal: 'Congé personnel', birthday: 'Journée anniversaire', vacation: 'Journée vacances', weekend: 'Congé fin de semaine',
           personalShort: 'Personnel', birthdayShort: 'Anniversaire', vacationShort: 'Vacances', weekendShort: 'Fin de semaine'
         },
         progress: { title: 'Progression', hoursLeft: 'h restantes', hoursOvertime: 'h sup.' },
-        week: { title: 'Ma semaine (lun – ven)', total: 'Total semaine', supSuffix: 'sup.' },
+        week: { titleMon: 'Ma semaine (lun – ven)', titleSun: 'Ma semaine (dim – sam)', total: 'Total semaine', supSuffix: 'sup.' },
         export: {
           title: 'Exporter', subtitle: 'Choisis une période, puis une destination',
           periodWeek: 'Cette semaine', periodMonth: 'Ce mois', periodAll: 'Tout',
@@ -1558,6 +1630,7 @@
           theme: 'Thème', themeDesc: 'Apparence de l\'application',
           hours: 'Horaires par défaut', hoursDesc: 'Appliqués aux nouvelles journées',
           language: 'Langue', languageDesc: 'Français ou anglais',
+          week: 'Semaine', weekDesc: 'Lundi à vendredi ou dimanche à samedi',
           mealDefault: 'Durée du repas par défaut'
         },
         toast: {
@@ -1568,6 +1641,12 @@
           defaultSaved: 'Valeur par défaut enregistrée'
         },
         themes: { dark: 'Nuit ambrée', light: 'Clair ambré', rouge: 'Rouge', foret: 'Forêt', ocean: 'Océan', cassis: 'Cassis' },
+        calendarType: {
+          mon_fri: 'Lundi au vendredi',
+          mon_fri_desc: 'Semaine de travail (5 jours)',
+          sun_sat: 'Dimanche au samedi',
+          sun_sat_desc: 'Semaine complète (7 jours)'
+        },
         csv: {
           header: 'Date,Jour,Type,Debut,Fin,Repas (min),Heures,Heures sup.,Note',
           total: 'TOTAL', typeWork: 'Travail', typeLeave: 'Congé '
@@ -1578,21 +1657,22 @@
         nav: { install: 'Install', theme: 'Change theme', settings: 'Settings', export: 'Export', prevMonth: 'Previous month', nextMonth: 'Next month', today: 'Today', todayFull: 'Today' },
         day: { today: 'today', yesterday: 'yesterday', tomorrow: 'tomorrow' },
         weekdays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
-        weekdayShort: ['M','T','W','T','F','S','S'],
+        weekdayShort: ['S','M','T','W','T','F','S'], // Sun-Sat order; reordered at render based on week start
         months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
         monthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
         form: {
           work: 'Work', leave: 'Leave', start: 'Start', end: 'End', meal: 'Meal',
           mealNone: 'None', meal30: '30 minutes', meal60: '60 minutes',
           leaveType: 'Leave type', note: 'Note', notePlaceholder: 'Entry details…',
-          dayHours: 'Hours today', overtime: 'OT'
+          dayHours: 'Hours today', overtime: 'OT',
+          clearDay: 'Clear this day', clearDayConfirm: 'Confirm delete'
         },
         leave: {
           personal: 'Personal leave', birthday: 'Birthday off', vacation: 'Vacation day', weekend: 'Weekend off',
           personalShort: 'Personal', birthdayShort: 'Birthday', vacationShort: 'Vacation', weekendShort: 'Weekend'
         },
         progress: { title: 'Progress', hoursLeft: 'h left', hoursOvertime: 'h OT' },
-        week: { title: 'My week (Mon – Fri)', total: 'Week total', supSuffix: 'OT' },
+        week: { titleMon: 'My week (Mon – Fri)', titleSun: 'My week (Sun – Sat)', total: 'Week total', supSuffix: 'OT' },
         export: {
           title: 'Export', subtitle: 'Choose a period, then a destination',
           periodWeek: 'This week', periodMonth: 'This month', periodAll: 'All',
@@ -1614,6 +1694,7 @@
           theme: 'Theme', themeDesc: 'App appearance',
           hours: 'Default hours', hoursDesc: 'Applied to new days',
           language: 'Language', languageDesc: 'French or English',
+          week: 'Week', weekDesc: 'Monday–Friday or Sunday–Saturday',
           mealDefault: 'Default meal duration'
         },
         toast: {
@@ -1624,6 +1705,12 @@
           defaultSaved: 'Default saved'
         },
         themes: { dark: 'Amber Night', light: 'Warm Paper', rouge: 'Red', foret: 'Forest', ocean: 'Ocean', cassis: 'Blackcurrant' },
+        calendarType: {
+          mon_fri: 'Monday to Friday',
+          mon_fri_desc: 'Work week (5 days)',
+          sun_sat: 'Sunday to Saturday',
+          sun_sat_desc: 'Full week (7 days)'
+        },
         csv: {
           header: 'Date,Day,Type,Start,End,Meal (min),Hours,Overtime,Note',
           total: 'TOTAL', typeWork: 'Work', typeLeave: 'Leave '
@@ -1661,6 +1748,9 @@
           const parsed = JSON.parse(s);
           if (parsed.theme && THEME_BY_ID[parsed.theme]) state.settings.theme = parsed.theme;
           if (parsed.lang && (parsed.lang === 'fr' || parsed.lang === 'en')) state.settings.lang = parsed.lang;
+          if (parsed.calendarType && (parsed.calendarType === 'mon_fri' || parsed.calendarType === 'sun_sat')) {
+            state.settings.calendarType = parsed.calendarType;
+          }
           if (parsed.defaults) {
             if (parsed.defaults.start) state.settings.defaults.start = parsed.defaults.start;
             if (parsed.defaults.end) state.settings.defaults.end = parsed.defaults.end;
@@ -1690,11 +1780,14 @@
       return new Date(y, m - 1, d);
     }
 
+    function weekDaysCount() { return state.settings.calendarType === 'sun_sat' ? 7 : 5; }
+    function weekStartDay() { return state.settings.calendarType === 'sun_sat' ? 0 : 1; } // 0=Sun, 1=Mon
+
     function getWeekStart(date) {
       const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const day = d.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      d.setDate(d.getDate() + diff);
+      const startDay = weekStartDay();
+      const diff = (d.getDay() - startDay + 7) % 7;
+      d.setDate(d.getDate() - diff);
       return d;
     }
 
@@ -1747,8 +1840,9 @@
 
     function getWeekTotal(date) {
       const start = getWeekStart(date);
+      const n = weekDaysCount();
       let total = 0;
-      for (let i = 0; i < 5; i++) { // Mon-Fri
+      for (let i = 0; i < n; i++) {
         const d = new Date(start); d.setDate(d.getDate() + i);
         const e = state.entries[dateKey(d)];
         if (e) total += calcEntryHours(e);
@@ -1848,7 +1942,7 @@
     function renderProgress() {
       const total = getWeekTotal(state.currentDate);
       const ws = getWeekStart(state.currentDate);
-      const we = new Date(ws); we.setDate(we.getDate() + 4); // Friday
+      const we = new Date(ws); we.setDate(we.getDate() + weekDaysCount() - 1);
       weekHours.textContent = formatHours(total);
       weekRange.textContent = ws.getDate() + ' ' + monthNamesShort()[ws.getMonth()] + ' – ' + we.getDate() + ' ' + monthNamesShort()[we.getMonth()];
 
@@ -1878,7 +1972,7 @@
 
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
-      const startOffset = (firstDay.getDay() + 6) % 7; // Mon=0
+      const startOffset = (firstDay.getDay() - weekStartDay() + 7) % 7;
 
       calGrid.innerHTML = '';
 
@@ -1949,9 +2043,16 @@
     function renderWeekList() {
       const start = getWeekStart(state.currentDate);
       const today = new Date();
+      const n = weekDaysCount();
       weekList.innerHTML = '';
 
-      for (let i = 0; i < 5; i++) {
+      // Dynamic card title based on calendar type
+      const weekLabel = $('weekCardLabel');
+      if (weekLabel) {
+        weekLabel.textContent = t(state.settings.calendarType === 'sun_sat' ? 'week.titleSun' : 'week.titleMon');
+      }
+
+      for (let i = 0; i < n; i++) {
         const d = new Date(start);
         d.setDate(d.getDate() + i);
         const key = dateKey(d);
@@ -1995,7 +2096,7 @@
             hours.classList.add('overtime');
             const extra = document.createElement('div');
             extra.className = 'week-day-extra overtime';
-            extra.textContent = '+' + formatHours(h - DAILY_STANDARD) + ' sup.';
+            extra.textContent = '+' + formatHours(h - DAILY_STANDARD) + ' ' + t('week.supSuffix');
             right.append(hours, extra);
           } else {
             right.appendChild(hours);
@@ -2034,6 +2135,7 @@
       renderProgress();
       renderCalendar();
       renderWeekList();
+      updateClearDayBtn();
     }
 
     // ============ ACTIONS ============
@@ -2082,6 +2184,7 @@
       renderProgress();
       renderCalendar();
       renderWeekList();
+      updateClearDayBtn();
       pulseSave();
     }
 
@@ -2286,7 +2389,7 @@
     function formatPeriodTitle(period) {
       if (period === 'week') {
         const ws = getWeekStart(state.currentDate);
-        const we = new Date(ws); we.setDate(we.getDate() + 4);
+        const we = new Date(ws); we.setDate(we.getDate() + weekDaysCount() - 1);
         return t('export.weekTitle')(formatShortDate(ws), formatShortDate(we) + ' ' + we.getFullYear());
       }
       if (period === 'month') {
@@ -2476,12 +2579,13 @@
       const calWeekdays = $('calWeekdays');
       if (calWeekdays) {
         calWeekdays.innerHTML = '';
-        const letters = t('weekdayShort');
-        letters.forEach(L => {
+        const short = t('weekdayShort'); // Sun-Sat order in i18n
+        const start = weekStartDay();
+        for (let i = 0; i < 7; i++) {
           const span = document.createElement('span');
-          span.textContent = L;
+          span.textContent = short[(start + i) % 7];
           calWeekdays.appendChild(span);
-        });
+        }
       }
 
       const targetEl = document.querySelector('.progress-value .target');
@@ -2505,6 +2609,11 @@
       if (langValueEl) {
         langValueEl.textContent = state.settings.lang === 'fr' ? 'Français' : 'English';
       }
+
+      const weekValueEl = $('settingsWeekValue');
+      if (weekValueEl) {
+        weekValueEl.textContent = t('calendarType.' + state.settings.calendarType);
+      }
     }
 
     function showSettingsView(view) {
@@ -2518,7 +2627,7 @@
         settingsSub.classList.remove('hidden');
         settingsBack.hidden = true;
       } else {
-        const map = { theme: 'settings.theme', hours: 'settings.hours', language: 'settings.language' };
+        const map = { theme: 'settings.theme', hours: 'settings.hours', language: 'settings.language', week: 'settings.week' };
         settingsTitle.textContent = t(map[view] || 'settings.title');
         settingsSub.classList.add('hidden');
         settingsBack.hidden = false;
@@ -2560,6 +2669,7 @@
       showSettingsView('menu');
       renderThemeGrid();
       renderLangList();
+      renderWeekPicker();
       updateSettingsValues();
       defStart.value = state.settings.defaults.start;
       defEnd.value = state.settings.defaults.end;
@@ -2593,11 +2703,70 @@
         saveSettings();
         applyI18n();
         renderLangList();
+        renderWeekPicker();
         renderThemeGrid();
         updateSettingsValues();
         showSettingsView(currentSettingsView);
         renderAll();
       });
+    });
+
+    // Week type picker
+    function renderWeekPicker() {
+      document.querySelectorAll('#weekList2 .lang-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.week === state.settings.calendarType);
+      });
+    }
+
+    document.querySelectorAll('#weekList2 .lang-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.week;
+        if (type === state.settings.calendarType) return;
+        state.settings.calendarType = type;
+        saveSettings();
+        applyI18n(); // re-emit calendar weekday letters for new start day
+        renderWeekPicker();
+        updateSettingsValues();
+        renderAll();
+      });
+    });
+
+    // Clear day button logic (uses lazy DOM lookups so init order doesn't matter)
+    var clearConfirmTimer = null;
+
+    function resetClearDayBtn() {
+      const btn = document.getElementById('clearDayBtn');
+      const txt = document.getElementById('clearDayText');
+      if (!btn || !txt) return;
+      btn.classList.remove('confirm');
+      txt.textContent = t('form.clearDay');
+    }
+
+    function updateClearDayBtn() {
+      const btn = document.getElementById('clearDayBtn');
+      if (!btn) return;
+      const key = dateKey(state.currentDate);
+      const has = !!state.entries[key];
+      btn.classList.toggle('hidden', !has);
+      if (!has) {
+        clearTimeout(clearConfirmTimer);
+        resetClearDayBtn();
+      }
+    }
+
+    document.getElementById('clearDayBtn').addEventListener('click', () => {
+      const btn = document.getElementById('clearDayBtn');
+      const txt = document.getElementById('clearDayText');
+      if (btn.classList.contains('confirm')) {
+        clearTimeout(clearConfirmTimer);
+        resetClearDayBtn();
+        deleteEntry();
+      } else {
+        btn.classList.add('confirm');
+        txt.textContent = t('form.clearDayConfirm');
+        clearTimeout(clearConfirmTimer);
+        clearConfirmTimer = setTimeout(resetClearDayBtn, 3000);
+      }
     });
 
     document.addEventListener('keydown', (e) => {
