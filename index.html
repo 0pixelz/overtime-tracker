@@ -120,6 +120,40 @@
     transition: background .15s;
   }
   .hdr-btn:active { background: rgba(255,255,255,0.25); }
+  .hdr-btn.hidden { display: none; }
+  .hdr-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ------ CALENDAR MODAL ------ */
+  .cal-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; gap: 8px;
+  }
+  .cal-month-label {
+    font-family: var(--serif); font-weight: 700; font-size: 17px;
+    letter-spacing: -0.01em; flex: 1; text-align: center;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+  .cal-day-hdr {
+    text-align: center; font-size: 11px; font-weight: 600;
+    color: var(--muted); padding: 4px 0 6px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .15s; position: relative;
+    border: 1.5px solid transparent;
+  }
+  .cal-day.empty { pointer-events: none; }
+  .cal-day.weekend { color: var(--muted); opacity: 0.6; pointer-events: none; }
+  .cal-day.today { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .cal-day.has-data { background: var(--success-soft); color: var(--success); }
+  .cal-day.day-off { background: var(--surface-2); color: var(--muted); }
+  .cal-day:not(.empty):not(.weekend):active { transform: scale(0.9); }
+  .cal-hours { font-size: 9px; font-family: var(--mono); margin-top: 1px; line-height: 1; }
 
   /* ------ MAIN ------ */
   main { max-width: 760px; margin: 0 auto; padding: 18px 16px 40px; }
@@ -631,7 +665,11 @@
       <div class="brand-mark">H</div>
       <h1>Mes <em>Heures</em></h1>
     </div>
-    <button class="hdr-btn" onclick="openSettings()" aria-label="Paramètres">⚙</button>
+    <div class="hdr-actions">
+      <button class="hdr-btn hidden" id="install-btn" onclick="installApp()" aria-label="Installer l'app">⬇︎</button>
+      <button class="hdr-btn" onclick="openCalendar()" aria-label="Calendrier">📅</button>
+      <button class="hdr-btn" onclick="openSettings()" aria-label="Paramètres">⚙</button>
+    </div>
   </div>
 </header>
 
@@ -671,6 +709,20 @@
     <div class="history-list" id="history-list"></div>
   </div>
 </main>
+
+<!-- Calendar modal -->
+<div class="modal-overlay" id="calendar-modal">
+  <div class="modal">
+    <div class="modal-grip"></div>
+    <h2>Calendrier <button class="close" onclick="closeCalendar()" aria-label="Fermer">✕</button></h2>
+    <div class="cal-nav">
+      <button class="nav-arrow" onclick="calPrevMonth()" aria-label="Mois précédent">‹</button>
+      <div class="cal-month-label" id="cal-month-label"></div>
+      <button class="nav-arrow" onclick="calNextMonth()" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+</div>
 
 <!-- Settings modal -->
 <div class="modal-overlay" id="settings-modal">
@@ -1239,6 +1291,121 @@ function toast(msg) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ================================================================
+//  CALENDAR MODAL
+// ================================================================
+let calYear, calMonth;
+const CAL_MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+function openCalendar() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalendar();
+  document.getElementById('calendar-modal').classList.add('open');
+}
+function closeCalendar() {
+  document.getElementById('calendar-modal').classList.remove('open');
+}
+function calPrevMonth() {
+  if (calMonth === 0) { calMonth = 11; calYear--; } else calMonth--;
+  renderCalendar();
+}
+function calNextMonth() {
+  if (calMonth === 11) { calMonth = 0; calYear++; } else calMonth++;
+  renderCalendar();
+}
+function renderCalendar() {
+  document.getElementById('cal-month-label').textContent = `${CAL_MONTHS_FR[calMonth]} ${calYear}`;
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  ['L','M','M','J','V','S','D'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-hdr';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+  const firstDay = new Date(calYear, calMonth, 1);
+  let startDow = firstDay.getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+  for (let i = 0; i < startDow; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const todayStr = todayYMD();
+  const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+  const todayMon = new Date(todayDate);
+  const tdow = todayDate.getDay();
+  todayMon.setDate(todayDate.getDate() + (tdow === 0 ? -6 : 1 - tdow));
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(calYear, calMonth, day);
+    const ds = ymd(d);
+    const dow = d.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const entry = data[ds];
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    if (isWeekend) { el.classList.add('weekend'); }
+    if (ds === todayStr) el.classList.add('today');
+    let hoursHtml = '';
+    if (entry) {
+      if (entry.dayOff) {
+        el.classList.add('day-off');
+        hoursHtml = '<div class="cal-hours">congé</div>';
+      } else {
+        const c = calcDay(entry);
+        if (c.worked != null) {
+          el.classList.add('has-data');
+          hoursHtml = `<div class="cal-hours">${fmtMin(c.worked)}</div>`;
+        }
+      }
+    }
+    el.innerHTML = `<span>${day}</span>${hoursHtml}`;
+    if (!isWeekend) {
+      el.onclick = () => {
+        const clickedMon = new Date(d);
+        const cdow = d.getDay();
+        clickedMon.setDate(d.getDate() + (cdow === 0 ? -6 : 1 - cdow));
+        weekOffset = Math.round((clickedMon - todayMon) / (7 * 86400000));
+        openDays.clear();
+        openDays.add(ds);
+        render();
+        closeCalendar();
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+      };
+    }
+    grid.appendChild(el);
+  }
+}
+document.getElementById('calendar-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeCalendar();
+});
+
+// ================================================================
+//  PWA INSTALL
+// ================================================================
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('install-btn').classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  document.getElementById('install-btn').classList.add('hidden');
+});
+function installApp() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(() => {
+    deferredInstallPrompt = null;
+    document.getElementById('install-btn').classList.add('hidden');
+  });
 }
 
 // ================================================================
