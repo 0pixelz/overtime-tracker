@@ -1,11 +1,11 @@
 // stats-fix.js
-// Correctif pour ouvrir la page Statistiques depuis le hamburger menu et gérer l'état actif.
+// Correctif simple pour ouvrir la page Statistiques sans bloquer le hamburger menu.
 (() => {
   if (window.__statsFixLoaded) return;
   window.__statsFixLoaded = true;
 
   const $ = (id) => document.getElementById(id);
-  const moneyless = (v) => Number(v || 0).toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = (v) => Number(v || 0).toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   function readJson(key) {
     try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; }
@@ -78,12 +78,6 @@
     else document.body.prepend(v);
   }
 
-  function isSystemNode(n) {
-    return ['SCRIPT', 'STYLE'].includes(n.tagName) ||
-      n.id === 'sideMenu' || n.id === 'sideBackdrop' ||
-      n.classList.contains('sheet') || n.classList.contains('sheet-backdrop');
-  }
-
   function contentNodes() {
     const header = document.querySelector('header');
     if (!header) return [];
@@ -91,41 +85,13 @@
     let n = header.nextElementSibling;
     while (n) {
       const next = n.nextElementSibling;
-      if (!isSystemNode(n) && n.id !== 'statsViewFix' && n.id !== 'payrollView') out.push(n);
+      const isSystem = ['SCRIPT', 'STYLE'].includes(n.tagName) ||
+        n.id === 'sideMenu' || n.id === 'sideBackdrop' ||
+        n.classList.contains('sheet') || n.classList.contains('sheet-backdrop');
+      if (!isSystem && n.id !== 'statsViewFix' && n.id !== 'payrollView') out.push(n);
       n = next;
     }
     return out;
-  }
-
-  function clearActiveMenu() {
-    const menu = $('sideMenu') || document.querySelector('.side-menu,.drawer,.menu-panel');
-    if (!menu) return;
-    menu.querySelectorAll('button, a, [role="button"]').forEach(el => {
-      el.classList.remove('active', 'selected', 'current');
-      el.removeAttribute('aria-current');
-    });
-  }
-
-  function setActiveMenu(page) {
-    clearActiveMenu();
-    const menu = $('sideMenu') || document.querySelector('.side-menu,.drawer,.menu-panel');
-    if (!menu) return;
-    const keywords = page === 'stats' ? ['statistique'] : page === 'payroll' ? ['paie', 'calendrier'] : ['accueil'];
-    const candidates = [...menu.querySelectorAll('button, a, [role="button"]')];
-    const item = candidates.find(el => {
-      const txt = (el.textContent || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return keywords.some(k => txt.includes(k));
-    });
-    if (item) {
-      item.classList.add('active');
-      item.setAttribute('aria-current', 'page');
-    }
-  }
-
-  function closeMenu() {
-    $('sideMenu')?.classList.remove('open');
-    $('sideBackdrop')?.classList.remove('open');
-    document.body.classList.remove('menu-open', 'drawer-open');
   }
 
   function renderStats() {
@@ -139,28 +105,42 @@
     });
     const regular = Math.min(total, workedDays * 40);
     const overtime = Math.max(0, total - workedDays * 40);
-    if ($('statsTotalHoursFix')) $('statsTotalHoursFix').textContent = `${moneyless(total)} h`;
+    if ($('statsTotalHoursFix')) $('statsTotalHoursFix').textContent = `${fmt(total)} h`;
     if ($('statsWorkedDaysFix')) $('statsWorkedDaysFix').textContent = String(workedDays);
-    if ($('statsRegularHoursFix')) $('statsRegularHoursFix').textContent = `${moneyless(regular)} h`;
-    if ($('statsOvertimeHoursFix')) $('statsOvertimeHoursFix').textContent = `${moneyless(overtime)} h`;
+    if ($('statsRegularHoursFix')) $('statsRegularHoursFix').textContent = `${fmt(regular)} h`;
+    if ($('statsOvertimeHoursFix')) $('statsOvertimeHoursFix').textContent = `${fmt(overtime)} h`;
     if ($('statsLeaveDaysFix')) $('statsLeaveDaysFix').textContent = String(leaveDays);
   }
 
-  function hidePayroll() {
-    const p = $('payrollView');
-    if (p) p.classList.remove('show');
-    document.querySelectorAll('.payroll-hidden').forEach(n => n.classList.remove('payroll-hidden'));
+  function closeMenu() {
+    $('sideMenu')?.classList.remove('open');
+    $('sideBackdrop')?.classList.remove('open');
+    document.body.classList.remove('menu-open', 'drawer-open');
+  }
+
+  function setActiveMenu(page) {
+    const menu = $('sideMenu') || document.querySelector('.side-menu,.drawer,.menu-panel');
+    if (!menu) return;
+    const keywords = page === 'stats' ? ['statistique'] : page === 'payroll' ? ['paie', 'calendrier'] : ['accueil'];
+    menu.querySelectorAll('button, a, [role="button"]').forEach(el => {
+      const txt = (el.textContent || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const isActive = keywords.some(k => txt.includes(k));
+      el.classList.toggle('active', isActive);
+      if (isActive) el.setAttribute('aria-current', 'page');
+      else el.removeAttribute('aria-current');
+    });
   }
 
   function showStats() {
     createStyles();
     createView();
-    hidePayroll();
+    $('payrollView')?.classList.remove('show');
+    document.querySelectorAll('.payroll-hidden').forEach(n => n.classList.remove('payroll-hidden'));
     contentNodes().forEach(n => n.classList.add('stats-hidden'));
-    $('statsViewFix').classList.add('show');
+    $('statsViewFix')?.classList.add('show');
+    renderStats();
     setActiveMenu('stats');
     closeMenu();
-    renderStats();
     scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -174,64 +154,46 @@
     setActiveMenu('home');
   }
 
-  function showPayrollActiveOnly() {
-    $('statsViewFix')?.classList.remove('show');
-    document.querySelectorAll('.stats-hidden').forEach(n => n.classList.remove('stats-hidden'));
-    setTimeout(() => setActiveMenu('payroll'), 0);
+  function watchPageState() {
+    setInterval(() => {
+      if ($('payrollView')?.classList.contains('show')) setActiveMenu('payroll');
+      else if ($('statsViewFix')?.classList.contains('show')) setActiveMenu('stats');
+    }, 700);
   }
 
-  function addStatsNavIfMissing() {
+  function bindMenu() {
     const menu = $('sideMenu') || document.querySelector('.side-menu,.drawer,.menu-panel');
-    if (!menu || $('navStatsFixBtn') || $('navStatsBtn')) return;
-    const btn = document.createElement('button');
-    btn.id = 'navStatsFixBtn';
-    btn.type = 'button';
-    btn.className = 'side-nav-btn';
-    btn.innerHTML = '<span class="side-nav-icon">📊</span><span>Statistiques</span>';
-    btn.addEventListener('click', showStats);
-    menu.prepend(btn);
-  }
+    if (!menu) return;
 
-  function bindClicks() {
-    document.addEventListener('click', (e) => {
+    menu.addEventListener('click', (e) => {
       const btn = e.target.closest('button, a, [role="button"]');
       if (!btn) return;
       const txt = (btn.textContent || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-      if (btn.id === 'navStatsBtn' || btn.id === 'navStatsFixBtn' || txt.includes('statistique')) {
+      if (txt.includes('statistique')) {
         e.preventDefault();
-        e.stopImmediatePropagation();
         showStats();
+        return;
+      }
+
+      if (txt.includes('accueil')) {
+        showHome();
         return;
       }
 
       if (txt.includes('calendrier') && txt.includes('paie')) {
         $('statsViewFix')?.classList.remove('show');
         document.querySelectorAll('.stats-hidden').forEach(n => n.classList.remove('stats-hidden'));
-        setTimeout(showPayrollActiveOnly, 50);
-        return;
+        setTimeout(() => setActiveMenu('payroll'), 100);
       }
-
-      if (btn.id === 'navHomeBtn' || txt.includes('accueil')) {
-        showHome();
-      }
-    }, true);
-  }
-
-  function observeMenuState() {
-    const obs = new MutationObserver(() => {
-      if ($('payrollView')?.classList.contains('show')) setActiveMenu('payroll');
-      else if ($('statsViewFix')?.classList.contains('show')) setActiveMenu('stats');
     });
-    obs.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
   }
 
   function init() {
     createStyles();
     createView();
-    addStatsNavIfMissing();
-    bindClicks();
-    observeMenuState();
+    bindMenu();
+    watchPageState();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
