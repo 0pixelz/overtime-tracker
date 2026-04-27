@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v9';
+const CACHE = 'heures-sup-v11';
 const ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,9 @@ const ASSETS = [
   './rrq-fix.js',
   './stats-projection-fix.js',
   './payroll-settings-simulation.js',
-  './ai-assistant.js'
+  './ai-assistant.js',
+  './menu-polish.js',
+  './ai-data-entry.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -41,6 +43,8 @@ async function withExtraScripts(response) {
   if (!html.includes('stats-projection-fix.js')) scripts.push('<script src="./stats-projection-fix.js"></script>');
   if (!html.includes('payroll-settings-simulation.js')) scripts.push('<script src="./payroll-settings-simulation.js"></script>');
   if (!html.includes('ai-assistant.js')) scripts.push('<script src="./ai-assistant.js"></script>');
+  if (!html.includes('menu-polish.js')) scripts.push('<script src="./menu-polish.js"></script>');
+  if (!html.includes('ai-data-entry.js')) scripts.push('<script src="./ai-data-entry.js"></script>');
   if (scripts.length) html = html.replace('</body>', scripts.join('') + '</body>');
 
   return new Response(html, {
@@ -64,6 +68,8 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/stats-projection-fix.js') ||
     url.pathname.endsWith('/payroll-settings-simulation.js') ||
     url.pathname.endsWith('/ai-assistant.js') ||
+    url.pathname.endsWith('/menu-polish.js') ||
+    url.pathname.endsWith('/ai-data-entry.js') ||
     url.pathname.endsWith('/service-worker.js');
 
   if (isHtml) {
