@@ -9,6 +9,7 @@ window.PaystubPDF = (() => {
     if (!value) return null;
     const cleaned = String(value)
       .replace(/\$/g, '')
+      .replace(/\*/g, '')
       .replace(/\s/g, '')
       .replace(/,/g, '.');
     const parsed = Number.parseFloat(cleaned);
@@ -23,6 +24,69 @@ window.PaystubPDF = (() => {
   function formatPercent(value) {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
     return (value * 100).toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
+  }
+
+  function firstNumberAfter(text, regex) {
+    const match = text.match(regex);
+    return match ? normalizeMoney(match[1]) : null;
+  }
+
+  function parseMetroPaystub(text) {
+    const normalized = text.replace(/\s+/g, ' ').trim();
+
+    // Metro format example:
+    // GAINS NETS 1619.53 543.34 NET TOTAL *****1076.19
+    const totals = normalized.match(/GAINS\s+NETS\s+([\d\s,.]+)\s+([\d\s,.]+)\s+NET\s+TOTAL\s+\*{0,}\s*([\d\s,.]+)/i);
+
+    // HRS.REG. 37.50 39.743 1490.36 18811.95
+    const regular = normalized.match(/HRS\.?\s*REG\.?\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/i);
+
+    // TS X 1.0 2.50 39.743 99.36 278.21
+    const overtimeOne = normalized.match(/TS\s*X\s*1[,.]0\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/i);
+
+    // TS X 1.5 0.50 59.615 29.81 59.62
+    const overtimeOneHalf = normalized.match(/TS\s*X\s*1[,.]5\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/i);
+
+    const grossPay = totals ? normalizeMoney(totals[1]) : null;
+    const deductions = totals ? normalizeMoney(totals[2]) : null;
+    const netPay = totals ? normalizeMoney(totals[3]) : null;
+
+    const regularHours = regular ? normalizeMoney(regular[1]) : null;
+    const hourlyRate = regular ? normalizeMoney(regular[2]) : null;
+    const regularAmount = regular ? normalizeMoney(regular[3]) : null;
+
+    const overtimeHours1x = overtimeOne ? normalizeMoney(overtimeOne[1]) : 0;
+    const overtimeRate1x = overtimeOne ? normalizeMoney(overtimeOne[2]) : null;
+    const overtimeAmount1x = overtimeOne ? normalizeMoney(overtimeOne[3]) : null;
+
+    const overtimeHours15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[1]) : 0;
+    const overtimeRate15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[2]) : null;
+    const overtimeAmount15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[3]) : null;
+
+    if (!grossPay && !netPay && !regularHours) return null;
+
+    return {
+      source: 'metro',
+      grossPay,
+      netPay,
+      deductions,
+      deductionRate: grossPay && deductions !== null ? deductions / grossPay : null,
+      regularHours,
+      hourlyRate,
+      regularAmount,
+      overtimeHours: Number(overtimeHours1x || 0) + Number(overtimeHours15x || 0),
+      overtimeHours1x,
+      overtimeRate1x,
+      overtimeAmount1x,
+      overtimeHours15x,
+      overtimeRate15x,
+      overtimeAmount15x,
+      federalTax: firstNumberAfter(normalized, /IMP\.?\s*FED\s+([\d,.]+)/i),
+      provincialTax: firstNumberAfter(normalized, /IMP\.?\s*PROV\s+([\d,.]+)/i),
+      rrq: firstNumberAfter(normalized, /R\.?R\.?Q\.?\s+([\d,.]+)/i),
+      rqap: firstNumberAfter(normalized, /RQAP\s+([\d,.]+)/i),
+      ei: firstNumberAfter(normalized, /ASS\.?\s*EMP\.?\s+([\d,.]+)/i)
+    };
   }
 
   function findAmountNearLabels(text, labels) {
@@ -56,6 +120,11 @@ window.PaystubPDF = (() => {
   }
 
   function analyzeText(text) {
+    const metro = parseMetroPaystub(text);
+    if (metro) {
+      return { ...metro, rawText: text };
+    }
+
     const grossPay = findAmountNearLabels(text, [
       'salaire brut', 'paie brute', 'brut', 'gross pay', 'gross earnings', 'total earnings'
     ]);
@@ -79,6 +148,7 @@ window.PaystubPDF = (() => {
     const deductionRate = grossPay && inferredDeductions !== null ? inferredDeductions / grossPay : null;
 
     return {
+      source: 'generic',
       grossPay,
       netPay,
       deductions: inferredDeductions,
@@ -90,6 +160,7 @@ window.PaystubPDF = (() => {
       ei,
       regularHours: hours.regularHours,
       overtimeHours: hours.overtimeHours,
+      hourlyRate: grossPay && hours.regularHours ? grossPay / hours.regularHours : null,
       rawText: text
     };
   }
@@ -120,6 +191,7 @@ window.PaystubPDF = (() => {
 
   function saveProfileFromAnalysis(analysis) {
     const profile = {
+      source: analysis.source,
       grossPay: analysis.grossPay,
       netPay: analysis.netPay,
       deductions: analysis.deductions,
@@ -130,7 +202,15 @@ window.PaystubPDF = (() => {
       rqap: analysis.rqap,
       ei: analysis.ei,
       regularHours: analysis.regularHours,
+      hourlyRate: analysis.hourlyRate,
+      regularAmount: analysis.regularAmount,
       overtimeHours: analysis.overtimeHours,
+      overtimeHours1x: analysis.overtimeHours1x,
+      overtimeRate1x: analysis.overtimeRate1x,
+      overtimeAmount1x: analysis.overtimeAmount1x,
+      overtimeHours15x: analysis.overtimeHours15x,
+      overtimeRate15x: analysis.overtimeRate15x,
+      overtimeAmount15x: analysis.overtimeAmount15x,
       importedAt: new Date().toISOString()
     };
     localStorage.setItem('paystubProfile', JSON.stringify(profile));
