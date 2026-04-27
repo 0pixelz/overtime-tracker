@@ -31,16 +31,18 @@ window.PaystubPDF = (() => {
     return match ? normalizeMoney(match[1]) : null;
   }
 
-  function allNumbers(text) {
-    return [...String(text).matchAll(MONEY_REGEX)]
-      .map(m => normalizeMoney(m[1]))
-      .filter(v => v !== null);
-  }
-
   function cleanAmount(value) {
     const n = normalizeMoney(value);
     if (n === null) return null;
     return Math.round(n * 100) / 100;
+  }
+
+  function findDeductionPair(normalized, labelRegex) {
+    const match = normalized.match(labelRegex);
+    if (!match || match.index === undefined) return { current: null, ytd: null };
+    const slice = normalized.slice(match.index, match.index + 90);
+    const nums = [...slice.matchAll(MONEY_REGEX)].map(m => cleanAmount(m[1])).filter(v => v !== null);
+    return { current: nums[0] ?? null, ytd: nums[1] ?? null };
   }
 
   function findNetTotal(normalized) {
@@ -59,33 +61,20 @@ window.PaystubPDF = (() => {
   }
 
   function findTotalEarnings(normalized) {
-    // Bottom footer format is the most reliable:
-    // TOTAL DES GAINS TOTAL EARNINGS 1619.53 TOTAL DES RETENUES...
     const bottom = normalized.match(/TOTAL\s+DES\s+GAINS\s+TOTAL\s+EARNINGS\s+(\d+(?:[,.]\d+)?)/i);
     if (bottom) return cleanAmount(bottom[1]);
-
-    // Another possible extraction order around bottom footer.
     const bottomLoose = normalized.match(/TOTAL\s+EARNINGS\s+(\d+(?:[,.]\d+)?)/i);
     if (bottomLoose) return cleanAmount(bottomLoose[1]);
-
     return null;
   }
 
   function parseMetroPaystub(text) {
     const normalized = text.replace(/\s+/g, ' ').trim();
 
-    let grossPay = null;
-    let deductions = null;
-    let netPay = null;
+    let grossPay = findTotalEarnings(normalized);
+    let deductions = findTotalDeductions(normalized);
+    let netPay = findNetTotal(normalized);
 
-    // Footer totals have priority because they are the pay-period totals.
-    grossPay = findTotalEarnings(normalized);
-    deductions = findTotalDeductions(normalized);
-    netPay = findNetTotal(normalized);
-
-    // Format sometimes extracted in a single line:
-    // GAINS NETS 1619.53 543.34 NET TOTAL *****1076.19
-    // Only use this if footer values were not found.
     const totals = normalized.match(/GAINS\s+NETS\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
     if (totals) {
       if (grossPay === null) grossPay = cleanAmount(totals[1]);
@@ -93,53 +82,38 @@ window.PaystubPDF = (() => {
       if (netPay === null) netPay = cleanAmount(totals[3]);
     }
 
-    // HRS.REG. 37.50 39.743 1490.36 18811.95
     const regular = normalized.match(/HRS\.?\s*REG\.?\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
-
-    // TS X 1.0 2.50 39.743 99.36 278.21
     const overtimeOne = normalized.match(/TS\s*X\s*1[,.]0\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
-
-    // TS X 1.5 0.50 59.615 29.81 59.62
     const overtimeOneHalf = normalized.match(/TS\s*X\s*1[,.]5\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
 
     const regularHours = regular ? normalizeMoney(regular[1]) : null;
     const hourlyRate = regular ? normalizeMoney(regular[2]) : null;
     const regularAmount = regular ? cleanAmount(regular[3]) : null;
-
     const overtimeHours1x = overtimeOne ? normalizeMoney(overtimeOne[1]) : 0;
     const overtimeRate1x = overtimeOne ? normalizeMoney(overtimeOne[2]) : null;
     const overtimeAmount1x = overtimeOne ? cleanAmount(overtimeOne[3]) : null;
-
     const overtimeHours15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[1]) : 0;
     const overtimeRate15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[2]) : null;
     const overtimeAmount15x = overtimeOneHalf ? cleanAmount(overtimeOneHalf[3]) : null;
 
-    // If footer gave net/deductions but not gross, infer gross.
-    if (grossPay === null && netPay !== null && deductions !== null) {
-      grossPay = Math.round((netPay + deductions) * 100) / 100;
-    }
-
-    // If gross still missing, rebuild only from current earnings lines.
+    if (grossPay === null && netPay !== null && deductions !== null) grossPay = Math.round((netPay + deductions) * 100) / 100;
     if (grossPay === null) {
-      const pieces = [regularAmount, overtimeAmount1x, overtimeAmount15x]
-        .filter(v => v !== null && Number.isFinite(v));
+      const pieces = [regularAmount, overtimeAmount1x, overtimeAmount15x].filter(v => v !== null && Number.isFinite(v));
       if (pieces.length) grossPay = Math.round(pieces.reduce((a, b) => a + b, 0) * 100) / 100;
     }
-
-    // Guard: if gross is clearly wrong but net + deductions are reliable, correct it.
-    // This prevents columns/date-to-date totals from being mistaken for current gross.
     if (grossPay !== null && netPay !== null && deductions !== null) {
       const inferredGross = Math.round((netPay + deductions) * 100) / 100;
-      if (Math.abs(grossPay - inferredGross) > 2 && inferredGross > 0) {
-        grossPay = inferredGross;
-      }
+      if (Math.abs(grossPay - inferredGross) > 2 && inferredGross > 0) grossPay = inferredGross;
     }
-
-    if (deductions === null && grossPay !== null && netPay !== null) {
-      deductions = Math.round((grossPay - netPay) * 100) / 100;
-    }
+    if (deductions === null && grossPay !== null && netPay !== null) deductions = Math.round((grossPay - netPay) * 100) / 100;
 
     if (!grossPay && !netPay && !regularHours && !deductions) return null;
+
+    const rrqPair = findDeductionPair(normalized, /R\.?R\.?Q\.?/i);
+    const rqapPair = findDeductionPair(normalized, /RQAP/i);
+    const eiPair = findDeductionPair(normalized, /ASS\.?\s*EMP\.?/i);
+    const federalPair = findDeductionPair(normalized, /IMP\.?\s*FED/i);
+    const provincialPair = findDeductionPair(normalized, /IMP\.?\s*PROV/i);
 
     return {
       source: 'metro',
@@ -157,103 +131,67 @@ window.PaystubPDF = (() => {
       overtimeHours15x,
       overtimeRate15x,
       overtimeAmount15x,
-      federalTax: firstNumberAfter(normalized, /IMP\.?\s*FED\s+(\d+(?:[,.]\d+)?)/i),
-      provincialTax: firstNumberAfter(normalized, /IMP\.?\s*PROV\s+(\d+(?:[,.]\d+)?)/i),
-      rrq: firstNumberAfter(normalized, /R\.?R\.?Q\.?\s+(\d+(?:[,.]\d+)?)/i),
-      rqap: firstNumberAfter(normalized, /RQAP\s+(\d+(?:[,.]\d+)?)/i),
-      ei: firstNumberAfter(normalized, /ASS\.?\s*EMP\.?\s+(\d+(?:[,.]\d+)?)/i)
+      federalTax: federalPair.current,
+      federalTaxYtd: federalPair.ytd,
+      provincialTax: provincialPair.current,
+      provincialTaxYtd: provincialPair.ytd,
+      rrq: rrqPair.current,
+      rrqYtd: rrqPair.ytd,
+      rqap: rqapPair.current,
+      rqapYtd: rqapPair.ytd,
+      ei: eiPair.current,
+      eiYtd: eiPair.ytd
     };
   }
 
   function findAmountNearLabels(text, labels) {
     const lower = text.toLowerCase();
-
     for (const label of labels) {
       const index = lower.indexOf(label.toLowerCase());
       if (index === -1) continue;
-
       const slice = text.slice(index, index + 260);
-      const matches = [...slice.matchAll(MONEY_REGEX)]
-        .map(match => normalizeMoney(match[1]))
-        .filter(value => value !== null);
-
+      const matches = [...slice.matchAll(MONEY_REGEX)].map(match => normalizeMoney(match[1])).filter(value => value !== null);
       if (matches.length) return matches[matches.length - 1];
     }
-
     return null;
   }
 
   function extractHours(text) {
     const result = { regularHours: null, overtimeHours: null };
-
     const regularMatch = text.match(/(?:heures?\s*)?(?:r[ée]guli[èe]res?|regulieres?|regular)\D+(\d+[,.]\d{1,2}|\d+)\s*h?/i);
     if (regularMatch) result.regularHours = normalizeMoney(regularMatch[1]);
-
     const overtimeMatch = text.match(/(?:heures?\s*)?(?:suppl[ée]mentaires?|sup\.?|overtime)\D+(\d+[,.]\d{1,2}|\d+)\s*h?/i);
     if (overtimeMatch) result.overtimeHours = normalizeMoney(overtimeMatch[1]);
-
     return result;
   }
 
   function analyzeText(text) {
     const metro = parseMetroPaystub(text);
-    if (metro) {
-      return { ...metro, rawText: text };
-    }
+    if (metro) return { ...metro, rawText: text };
 
-    const grossPay = findAmountNearLabels(text, [
-      'salaire brut', 'paie brute', 'brut', 'gross pay', 'gross earnings', 'total earnings'
-    ]);
-
-    const netPay = findAmountNearLabels(text, [
-      'salaire net', 'paie nette', 'net à payer', 'net a payer', 'net pay', 'deposit amount'
-    ]);
-
-    const deductions = findAmountNearLabels(text, [
-      'total retenues', 'retenues', 'déductions', 'deductions', 'total deductions'
-    ]);
-
+    const grossPay = findAmountNearLabels(text, ['salaire brut', 'paie brute', 'brut', 'gross pay', 'gross earnings', 'total earnings']);
+    const netPay = findAmountNearLabels(text, ['salaire net', 'paie nette', 'net à payer', 'net a payer', 'net pay', 'deposit amount']);
+    const deductions = findAmountNearLabels(text, ['total retenues', 'retenues', 'déductions', 'deductions', 'total deductions']);
     const federalTax = findAmountNearLabels(text, ['impôt fédéral', 'impot federal', 'federal tax']);
     const provincialTax = findAmountNearLabels(text, ['impôt provincial', 'impot provincial', 'provincial tax', 'quebec tax', 'québec tax']);
     const rrq = findAmountNearLabels(text, ['rrq', 'qpp']);
     const rqap = findAmountNearLabels(text, ['rqap', 'qpip']);
     const ei = findAmountNearLabels(text, ['assurance emploi', 'employment insurance', 'ei']);
-
     const hours = extractHours(text);
     const inferredDeductions = deductions ?? (grossPay !== null && netPay !== null ? grossPay - netPay : null);
     const deductionRate = grossPay && inferredDeductions !== null ? inferredDeductions / grossPay : null;
 
-    return {
-      source: 'generic',
-      grossPay,
-      netPay,
-      deductions: inferredDeductions,
-      deductionRate,
-      federalTax,
-      provincialTax,
-      rrq,
-      rqap,
-      ei,
-      regularHours: hours.regularHours,
-      overtimeHours: hours.overtimeHours,
-      hourlyRate: grossPay && hours.regularHours ? grossPay / hours.regularHours : null,
-      rawText: text
-    };
+    return { source: 'generic', grossPay, netPay, deductions: inferredDeductions, deductionRate, federalTax, provincialTax, rrq, rqap, ei, regularHours: hours.regularHours, overtimeHours: hours.overtimeHours, hourlyRate: grossPay && hours.regularHours ? grossPay / hours.regularHours : null, rawText: text };
   }
 
   async function readPdfText(file) {
-    if (!window.pdfjsLib) {
-      throw new Error('PDF.js n’est pas chargé dans index.html.');
-    }
-
+    if (!window.pdfjsLib) throw new Error('PDF.js n’est pas chargé dans index.html.');
     const buffer = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
     const pages = [];
-
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
-
       const items = content.items
         .map(item => ({ str: item.str, x: item.transform?.[4] || 0, y: item.transform?.[5] || 0 }))
         .filter(item => item.str && item.str.trim())
@@ -261,11 +199,8 @@ window.PaystubPDF = (() => {
           if (Math.abs(b.y - a.y) > 3) return b.y - a.y;
           return a.x - b.x;
         });
-
-      const pageText = items.map(item => item.str).join(' ');
-      pages.push(pageText);
+      pages.push(items.map(item => item.str).join(' '));
     }
-
     return pages.join('\n');
   }
 
@@ -282,10 +217,15 @@ window.PaystubPDF = (() => {
       deductions: analysis.deductions,
       deductionRate: analysis.deductionRate,
       federalTax: analysis.federalTax,
+      federalTaxYtd: analysis.federalTaxYtd,
       provincialTax: analysis.provincialTax,
+      provincialTaxYtd: analysis.provincialTaxYtd,
       rrq: analysis.rrq,
+      rrqYtd: analysis.rrqYtd,
       rqap: analysis.rqap,
+      rqapYtd: analysis.rqapYtd,
       ei: analysis.ei,
+      eiYtd: analysis.eiYtd,
       regularHours: analysis.regularHours,
       hourlyRate: analysis.hourlyRate,
       regularAmount: analysis.regularAmount,
@@ -302,12 +242,5 @@ window.PaystubPDF = (() => {
     return profile;
   }
 
-  return {
-    analyzeFile,
-    analyzeText,
-    readPdfText,
-    saveProfileFromAnalysis,
-    formatMoney,
-    formatPercent
-  };
+  return { analyzeFile, analyzeText, readPdfText, saveProfileFromAnalysis, formatMoney, formatPercent };
 })();
