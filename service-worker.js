@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v19';
+const CACHE = 'heures-sup-v20';
 const ASSETS = [
   './',
   './index.html',
@@ -19,9 +19,7 @@ const ASSETS = [
   './gemini-key-settings.js',
   './paystub-history.js',
   './week-tools.js',
-  './week-delete-fix.js',
-  './week-delete-hardfix.js',
-  './week-delete-idb-fix.js'
+  './week-delete-final.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -58,9 +56,7 @@ async function withExtraScripts(response) {
   if (!html.includes('gemini-key-settings.js')) scripts.push('<script src="./gemini-key-settings.js"></script>');
   if (!html.includes('paystub-history.js')) scripts.push('<script src="./paystub-history.js"></script>');
   if (!html.includes('week-tools.js')) scripts.push('<script src="./week-tools.js"></script>');
-  if (!html.includes('week-delete-fix.js')) scripts.push('<script src="./week-delete-fix.js"></script>');
-  if (!html.includes('week-delete-hardfix.js')) scripts.push('<script src="./week-delete-hardfix.js"></script>');
-  if (!html.includes('week-delete-idb-fix.js')) scripts.push('<script src="./week-delete-idb-fix.js"></script>');
+  if (!html.includes('week-delete-final.js')) scripts.push('<script src="./week-delete-final.js"></script>');
   if (scripts.length) html = html.replace('</body>', scripts.join('') + '</body>');
 
   return new Response(html, {
@@ -91,9 +87,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/gemini-key-settings.js') ||
     url.pathname.endsWith('/paystub-history.js') ||
     url.pathname.endsWith('/week-tools.js') ||
-    url.pathname.endsWith('/week-delete-fix.js') ||
-    url.pathname.endsWith('/week-delete-hardfix.js') ||
-    url.pathname.endsWith('/week-delete-idb-fix.js') ||
+    url.pathname.endsWith('/week-delete-final.js') ||
     url.pathname.endsWith('/service-worker.js');
 
   if (isHtml) {
