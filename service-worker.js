@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v14';
+const CACHE = 'heures-sup-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -16,7 +16,8 @@ const ASSETS = [
   './ai-data-entry.js',
   './navigation-recovery.js',
   './gemini-assistant-bridge.js',
-  './gemini-key-settings.js'
+  './gemini-key-settings.js',
+  './paystub-history.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -51,6 +52,7 @@ async function withExtraScripts(response) {
   if (!html.includes('navigation-recovery.js')) scripts.push('<script src="./navigation-recovery.js"></script>');
   if (!html.includes('gemini-assistant-bridge.js')) scripts.push('<script src="./gemini-assistant-bridge.js"></script>');
   if (!html.includes('gemini-key-settings.js')) scripts.push('<script src="./gemini-key-settings.js"></script>');
+  if (!html.includes('paystub-history.js')) scripts.push('<script src="./paystub-history.js"></script>');
   if (scripts.length) html = html.replace('</body>', scripts.join('') + '</body>');
 
   return new Response(html, {
@@ -79,6 +81,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/navigation-recovery.js') ||
     url.pathname.endsWith('/gemini-assistant-bridge.js') ||
     url.pathname.endsWith('/gemini-key-settings.js') ||
+    url.pathname.endsWith('/paystub-history.js') ||
     url.pathname.endsWith('/service-worker.js');
 
   if (isHtml) {
