@@ -1,5 +1,5 @@
 // stats-fix.js
-// Correctif léger pour ouvrir la page Statistiques depuis le hamburger menu.
+// Correctif pour ouvrir la page Statistiques depuis le hamburger menu et gérer l'état actif.
 (() => {
   if (window.__statsFixLoaded) return;
   window.__statsFixLoaded = true;
@@ -78,6 +78,12 @@
     else document.body.prepend(v);
   }
 
+  function isSystemNode(n) {
+    return ['SCRIPT', 'STYLE'].includes(n.tagName) ||
+      n.id === 'sideMenu' || n.id === 'sideBackdrop' ||
+      n.classList.contains('sheet') || n.classList.contains('sheet-backdrop');
+  }
+
   function contentNodes() {
     const header = document.querySelector('header');
     if (!header) return [];
@@ -85,10 +91,41 @@
     let n = header.nextElementSibling;
     while (n) {
       const next = n.nextElementSibling;
-      if (!['SCRIPT', 'STYLE'].includes(n.tagName) && n.id !== 'statsViewFix' && n.id !== 'payrollView' && n.id !== 'sideMenu' && n.id !== 'sideBackdrop' && !n.classList.contains('sheet') && !n.classList.contains('sheet-backdrop')) out.push(n);
+      if (!isSystemNode(n) && n.id !== 'statsViewFix' && n.id !== 'payrollView') out.push(n);
       n = next;
     }
     return out;
+  }
+
+  function clearActiveMenu() {
+    const menu = $('sideMenu') || document.querySelector('.side-menu,.drawer,.menu-panel');
+    if (!menu) return;
+    menu.querySelectorAll('button, a, [role="button"]').forEach(el => {
+      el.classList.remove('active', 'selected', 'current');
+      el.removeAttribute('aria-current');
+    });
+  }
+
+  function setActiveMenu(page) {
+    clearActiveMenu();
+    const menu = $('sideMenu') || document.querySelector('.side-menu,.drawer,.menu-panel');
+    if (!menu) return;
+    const keywords = page === 'stats' ? ['statistique'] : page === 'payroll' ? ['paie', 'calendrier'] : ['accueil'];
+    const candidates = [...menu.querySelectorAll('button, a, [role="button"]')];
+    const item = candidates.find(el => {
+      const txt = (el.textContent || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return keywords.some(k => txt.includes(k));
+    });
+    if (item) {
+      item.classList.add('active');
+      item.setAttribute('aria-current', 'page');
+    }
+  }
+
+  function closeMenu() {
+    $('sideMenu')?.classList.remove('open');
+    $('sideBackdrop')?.classList.remove('open');
+    document.body.classList.remove('menu-open', 'drawer-open');
   }
 
   function renderStats() {
@@ -109,21 +146,38 @@
     if ($('statsLeaveDaysFix')) $('statsLeaveDaysFix').textContent = String(leaveDays);
   }
 
+  function hidePayroll() {
+    const p = $('payrollView');
+    if (p) p.classList.remove('show');
+    document.querySelectorAll('.payroll-hidden').forEach(n => n.classList.remove('payroll-hidden'));
+  }
+
   function showStats() {
     createStyles();
     createView();
-    document.getElementById('payrollView')?.classList.remove('show');
+    hidePayroll();
     contentNodes().forEach(n => n.classList.add('stats-hidden'));
     $('statsViewFix').classList.add('show');
-    $('sideMenu')?.classList.remove('open');
-    $('sideBackdrop')?.classList.remove('open');
+    setActiveMenu('stats');
+    closeMenu();
     renderStats();
     scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function showHome() {
     $('statsViewFix')?.classList.remove('show');
+    $('payrollView')?.classList.remove('show');
+    document.querySelectorAll('.stats-hidden,.payroll-hidden').forEach(n => {
+      n.classList.remove('stats-hidden');
+      n.classList.remove('payroll-hidden');
+    });
+    setActiveMenu('home');
+  }
+
+  function showPayrollActiveOnly() {
+    $('statsViewFix')?.classList.remove('show');
     document.querySelectorAll('.stats-hidden').forEach(n => n.classList.remove('stats-hidden'));
+    setTimeout(() => setActiveMenu('payroll'), 0);
   }
 
   function addStatsNavIfMissing() {
@@ -143,13 +197,33 @@
       const btn = e.target.closest('button, a, [role="button"]');
       if (!btn) return;
       const txt = (btn.textContent || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (btn.id === 'navStatsBtn' || txt.includes('statistique')) {
+
+      if (btn.id === 'navStatsBtn' || btn.id === 'navStatsFixBtn' || txt.includes('statistique')) {
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         showStats();
+        return;
       }
-      if (btn.id === 'navHomeBtn' || txt.includes('accueil')) showHome();
+
+      if (txt.includes('calendrier') && txt.includes('paie')) {
+        $('statsViewFix')?.classList.remove('show');
+        document.querySelectorAll('.stats-hidden').forEach(n => n.classList.remove('stats-hidden'));
+        setTimeout(showPayrollActiveOnly, 50);
+        return;
+      }
+
+      if (btn.id === 'navHomeBtn' || txt.includes('accueil')) {
+        showHome();
+      }
     }, true);
+  }
+
+  function observeMenuState() {
+    const obs = new MutationObserver(() => {
+      if ($('payrollView')?.classList.contains('show')) setActiveMenu('payroll');
+      else if ($('statsViewFix')?.classList.contains('show')) setActiveMenu('stats');
+    });
+    obs.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
   }
 
   function init() {
@@ -157,6 +231,7 @@
     createView();
     addStatsNavIfMissing();
     bindClicks();
+    observeMenuState();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
