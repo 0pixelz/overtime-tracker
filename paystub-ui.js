@@ -43,18 +43,29 @@
     return { start,end,...splitHours(worked) };
   }
   function profile(){ return readJson('paystubProfile'); }
+  function inferredDeductionRate(p){
+    const direct = validRate(p.deductionRate);
+    if (direct) return direct;
+    const gross = Number(p.grossPay || 0);
+    const deductions = Number(p.deductions || 0);
+    const net = Number(p.netPay || 0);
+    if (gross > 0 && deductions > 0) return validRate(deductions / gross);
+    if (gross > 0 && net > 0 && gross > net) return validRate((gross - net) / gross);
+    return 0;
+  }
   function rate(p){ const m=Number(localStorage.getItem('payrollHourlyRate')||0); if(m>0)return m; if(p.hourlyRate)return Number(p.hourlyRate); if(p.grossPay&&p.regularHours)return Number(p.grossPay)/Number(p.regularHours); if(p.grossPay)return Number(p.grossPay)/REGULAR_PAY_LIMIT; return 0; }
   function deductionRate(p){
     const saved = validRate(localStorage.getItem('payrollDeductionRate'));
     if (saved) return saved;
-    return validRate(p.deductionRate);
+    return inferredDeductionRate(p);
   }
   function repairInvalidRates(){
     const saved = Number(localStorage.getItem('payrollDeductionRate') || 0);
     const p = profile();
-    const profileRate = validRate(p.deductionRate);
+    const profileRate = inferredDeductionRate(p);
     if (saved >= MAX_VALID_DEDUCTION_RATE && profileRate) localStorage.setItem('payrollDeductionRate', String(profileRate));
     if (saved >= MAX_VALID_DEDUCTION_RATE && !profileRate) localStorage.removeItem('payrollDeductionRate');
+    if (!validRate(saved) && profileRate) localStorage.setItem('payrollDeductionRate', String(profileRate));
   }
   function estimateFromHours(totalHours){
     const p=profile(), r=rate(p), dr=deductionRate(p), s=splitHours(totalHours);
@@ -108,6 +119,7 @@
     const d=estimate(); if(!$('payWeekRange'))return;
     $('payWeekRange').textContent=`${fmt(d.s.start)} au ${fmt(d.s.end)}`; $('payWorkedHours').textContent=hrs(d.s.worked); $('payRegularHours').textContent=hrs(d.s.regular); $('payOvertimeHours').textContent=hrs(d.s.overtime); $('payGross').textContent=money(d.gross); $('payNet').textContent=money(d.net); $('payDeductions').textContent=money(d.ded); $('payHourlyRateValue').textContent=d.r?money(d.r)+' / h':'À configurer'; $('payDeductionRateValue').textContent=d.dr?pct(d.dr):'À configurer'; $('payImportedNet').textContent=money(d.p.netPay); $('payImportedProfile').textContent=d.p.importedAt?`PDF importé le ${new Date(d.p.importedAt).toLocaleString('fr-CA')}`:'Aucun PDF importé';
     const del=$('deletePaystubBtn'); if(del) del.style.display=d.p.importedAt?'inline-flex':'none';
+    const dedInput=$('payDeductionRateInput'); if(dedInput && !dedInput.value && d.dr) dedInput.value=String(d.dr*100);
     renderManualEstimate();
   }
   function showPayroll(){ view(); contentNodes().forEach(n=>n.classList.add('payroll-hidden')); $('payrollView').classList.add('show'); $('sideMenu')?.classList.remove('open'); $('sideBackdrop')?.classList.remove('open'); bind(); render(); scrollTo({top:0,behavior:'smooth'}); }
@@ -122,7 +134,7 @@
     if(mh&&!mh.dataset.bound){ mh.dataset.bound=1; mh.value=localStorage.getItem('manualEstimateHours')||''; mh.oninput=()=>{ localStorage.setItem('manualEstimateHours', mh.value || ''); renderManualEstimate(); }; }
     if(r&&!r.dataset.bound){ r.dataset.bound=1; r.value=localStorage.getItem('payrollHourlyRate')||''; r.oninput=()=>{ if(Number(r.value)>0)localStorage.setItem('payrollHourlyRate',r.value); render(); }; }
     if(d&&!d.dataset.bound){ d.dataset.bound=1; const sv=validRate(localStorage.getItem('payrollDeductionRate')); d.value=sv?String(sv*100):''; d.oninput=()=>{ const val=Number(d.value || 0); if(val>0 && val<75)localStorage.setItem('payrollDeductionRate',String(val/100)); render(); }; }
-    if(pdf&&!pdf.dataset.bound){ pdf.dataset.bound=1; pdf.onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file)return; const status=$('paystubImportStatus'); try{ status.textContent='Analyse du PDF en cours…'; if(!window.PaystubPDF)throw new Error('PDF module absent'); const a=await window.PaystubPDF.analyzeFile(file); window.PaystubPDF.saveProfileFromAnalysis(a); if(validRate(a.deductionRate))localStorage.setItem('payrollDeductionRate',String(a.deductionRate)); if(a.hourlyRate)localStorage.setItem('payrollHourlyRate',String(a.hourlyRate)); else if(a.grossPay&&a.regularHours)localStorage.setItem('payrollHourlyRate',String(a.grossPay/a.regularHours)); status.textContent=`PDF analysé. Brut: ${money(a.grossPay)} | Net: ${money(a.netPay)} | Retenues: ${pct(a.deductionRate)}`; if(r) r.value=localStorage.getItem('payrollHourlyRate')||''; if(d){ const sv=validRate(localStorage.getItem('payrollDeductionRate')); d.value=sv?String(sv*100):''; } render(); }catch(err){ status.textContent='Impossible de lire ce PDF. Vérifie qu’il contient du texte sélectionnable.'; console.error(err); } finally { pdf.value=''; } }; }
+    if(pdf&&!pdf.dataset.bound){ pdf.dataset.bound=1; pdf.onchange=async(e)=>{ const file=e.target.files?.[0]; if(!file)return; const status=$('paystubImportStatus'); try{ status.textContent='Analyse du PDF en cours…'; if(!window.PaystubPDF)throw new Error('PDF module absent'); const a=await window.PaystubPDF.analyzeFile(file); window.PaystubPDF.saveProfileFromAnalysis(a); const inferred = inferredDeductionRate(a); if(inferred)localStorage.setItem('payrollDeductionRate',String(inferred)); if(a.hourlyRate)localStorage.setItem('payrollHourlyRate',String(a.hourlyRate)); else if(a.grossPay&&a.regularHours)localStorage.setItem('payrollHourlyRate',String(a.grossPay/a.regularHours)); status.textContent=`PDF analysé. Brut: ${money(a.grossPay)} | Net: ${money(a.netPay)} | Retenues: ${pct(inferred || a.deductionRate)}`; if(r) r.value=localStorage.getItem('payrollHourlyRate')||''; if(d){ const sv=validRate(localStorage.getItem('payrollDeductionRate')); d.value=sv?String(sv*100):''; } render(); }catch(err){ status.textContent='Impossible de lire ce PDF. Vérifie qu’il contient du texte sélectionnable.'; console.error(err); } finally { pdf.value=''; } }; }
   }
   function init(){ if(window.__payrollFixed)return; window.__payrollFixed=true; styles(); view(); nav(); bind(); render(); }
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();
