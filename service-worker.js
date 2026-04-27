@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v5';
+const CACHE = 'heures-sup-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,8 @@ const ASSETS = [
   './icon-512.png',
   './paystub-pdf.js',
   './paystub-ui.js',
-  './stats-fix.js'
+  './stats-fix.js',
+  './rrq-fix.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -26,14 +27,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-async function withStatsFixScript(response) {
+async function withExtraScripts(response) {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('text/html')) return response;
 
   let html = await response.text();
-  if (!html.includes('stats-fix.js')) {
-    html = html.replace('</body>', '<script src="./stats-fix.js"></script></body>');
-  }
+  const scripts = [];
+  if (!html.includes('stats-fix.js')) scripts.push('<script src="./stats-fix.js"></script>');
+  if (!html.includes('rrq-fix.js')) scripts.push('<script src="./rrq-fix.js"></script>');
+  if (scripts.length) html = html.replace('</body>', scripts.join('') + '</body>');
 
   return new Response(html, {
     status: response.status,
@@ -52,18 +54,19 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/paystub-ui.js') ||
     url.pathname.endsWith('/paystub-pdf.js') ||
     url.pathname.endsWith('/stats-fix.js') ||
+    url.pathname.endsWith('/rrq-fix.js') ||
     url.pathname.endsWith('/service-worker.js');
 
   if (isHtml) {
     event.respondWith(
       fetch(req, { cache: 'reload' })
         .then(async (res) => {
-          const fixed = await withStatsFixScript(res.clone());
+          const fixed = await withExtraScripts(res.clone());
           const cacheCopy = fixed.clone();
           caches.open(CACHE).then((c) => c.put(req, cacheCopy)).catch(() => {});
           return fixed;
         })
-        .catch(() => caches.match(req).then((r) => r ? withStatsFixScript(r) : caches.match('./index.html').then((x) => x ? withStatsFixScript(x) : x)))
+        .catch(() => caches.match(req).then((r) => r ? withExtraScripts(r) : caches.match('./index.html').then((x) => x ? withExtraScripts(x) : x)))
     );
     return;
   }
