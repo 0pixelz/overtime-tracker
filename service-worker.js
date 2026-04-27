@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v7';
+const CACHE = 'heures-sup-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,8 @@ const ASSETS = [
   './paystub-ui.js',
   './stats-fix.js',
   './rrq-fix.js',
-  './stats-projection-fix.js'
+  './stats-projection-fix.js',
+  './payroll-settings-simulation.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -37,6 +38,7 @@ async function withExtraScripts(response) {
   if (!html.includes('stats-fix.js')) scripts.push('<script src="./stats-fix.js"></script>');
   if (!html.includes('rrq-fix.js')) scripts.push('<script src="./rrq-fix.js"></script>');
   if (!html.includes('stats-projection-fix.js')) scripts.push('<script src="./stats-projection-fix.js"></script>');
+  if (!html.includes('payroll-settings-simulation.js')) scripts.push('<script src="./payroll-settings-simulation.js"></script>');
   if (scripts.length) html = html.replace('</body>', scripts.join('') + '</body>');
 
   return new Response(html, {
@@ -58,6 +60,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/stats-fix.js') ||
     url.pathname.endsWith('/rrq-fix.js') ||
     url.pathname.endsWith('/stats-projection-fix.js') ||
+    url.pathname.endsWith('/payroll-settings-simulation.js') ||
     url.pathname.endsWith('/service-worker.js');
 
   if (isHtml) {
