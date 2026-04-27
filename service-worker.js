@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v18';
+const CACHE = 'heures-sup-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -20,7 +20,8 @@ const ASSETS = [
   './paystub-history.js',
   './week-tools.js',
   './week-delete-fix.js',
-  './week-delete-hardfix.js'
+  './week-delete-hardfix.js',
+  './week-delete-idb-fix.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -59,6 +60,7 @@ async function withExtraScripts(response) {
   if (!html.includes('week-tools.js')) scripts.push('<script src="./week-tools.js"></script>');
   if (!html.includes('week-delete-fix.js')) scripts.push('<script src="./week-delete-fix.js"></script>');
   if (!html.includes('week-delete-hardfix.js')) scripts.push('<script src="./week-delete-hardfix.js"></script>');
+  if (!html.includes('week-delete-idb-fix.js')) scripts.push('<script src="./week-delete-idb-fix.js"></script>');
   if (scripts.length) html = html.replace('</body>', scripts.join('') + '</body>');
 
   return new Response(html, {
@@ -91,6 +93,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/week-tools.js') ||
     url.pathname.endsWith('/week-delete-fix.js') ||
     url.pathname.endsWith('/week-delete-hardfix.js') ||
+    url.pathname.endsWith('/week-delete-idb-fix.js') ||
     url.pathname.endsWith('/service-worker.js');
 
   if (isHtml) {
