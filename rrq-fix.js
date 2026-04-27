@@ -19,6 +19,42 @@
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
+  function addDays(date, days) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+  }
+
+  function getWeekStart(date = new Date()) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const day = d.getDay();
+    d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+    return d;
+  }
+
+  function formatDate(date) {
+    if (!date || Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function formatMonth(date) {
+    if (!date || Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' });
+  }
+
+  function finishInfo(weeksRemaining) {
+    if (weeksRemaining == null || Number.isNaN(Number(weeksRemaining))) return { week: '—', month: '—' };
+    const roundedWeeks = Math.ceil(Number(weeksRemaining));
+    const start = getWeekStart();
+    const finishWeekStart = addDays(start, roundedWeeks * 7);
+    const finishWeekEnd = addDays(finishWeekStart, 6);
+    return {
+      week: `${formatDate(finishWeekStart)} au ${formatDate(finishWeekEnd)}`,
+      month: formatMonth(finishWeekStart)
+    };
+  }
+
   function getProfileCard() {
     const labels = [...document.querySelectorAll('.card-label')];
     const label = labels.find(el => (el.textContent || '').toLowerCase().includes('profil de paie'));
@@ -43,7 +79,9 @@
       createRow('rrqMaxValue', 'Maximum RRQ 2026'),
       createRow('rrqRemainingValue', 'RRQ restant à payer'),
       createRow('rrqWeeklyValue', 'RRQ par semaine'),
-      createRow('rrqWeeksRemainingValue', 'Semaines restantes RRQ')
+      createRow('rrqWeeksRemainingValue', 'Semaines restantes RRQ'),
+      createRow('rrqFinishWeekValue', 'Semaine estimée fin RRQ'),
+      createRow('rrqFinishMonthValue', 'Mois estimé fin RRQ')
     ];
 
     if (anchor) rows.reverse().forEach(r => anchor.insertAdjacentElement('afterend', r));
@@ -58,12 +96,15 @@
     const rrqWeekly = valueOrNull(p.rrq);
     const remaining = rrqYtd != null ? Math.max(0, RRQ_MAX_2026 - rrqYtd) : null;
     const weeksRemaining = remaining != null && rrqWeekly ? remaining / rrqWeekly : null;
+    const finish = finishInfo(weeksRemaining);
 
     if ($('rrqYtdValue')) $('rrqYtdValue').textContent = money(rrqYtd);
     if ($('rrqMaxValue')) $('rrqMaxValue').textContent = money(RRQ_MAX_2026);
     if ($('rrqRemainingValue')) $('rrqRemainingValue').textContent = money(remaining);
     if ($('rrqWeeklyValue')) $('rrqWeeklyValue').textContent = money(rrqWeekly);
     if ($('rrqWeeksRemainingValue')) $('rrqWeeksRemainingValue').textContent = weeks(weeksRemaining);
+    if ($('rrqFinishWeekValue')) $('rrqFinishWeekValue').textContent = finish.week;
+    if ($('rrqFinishMonthValue')) $('rrqFinishMonthValue').textContent = finish.month;
   }
 
   function init() {
