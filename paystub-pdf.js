@@ -3,7 +3,7 @@
 // Ce fichier garde le PDF dans le navigateur: rien n'est envoyé à un serveur.
 
 window.PaystubPDF = (() => {
-  const MONEY_REGEX = /(?:\$\s*)?(-?\d{1,3}(?:[\s,]\d{3})*[,.]\d{2}|-?\d+[,.]\d{2})\s*\$?/g;
+  const MONEY_REGEX = /(?:\$\s*)?(-?\d{1,6}(?:[\s,]\d{3})*[,.]\d{2,3}|-?\d+[,.]\d{2,3})\s*\$?/g;
 
   function normalizeMoney(value) {
     if (!value) return null;
@@ -31,6 +31,43 @@ window.PaystubPDF = (() => {
     return match ? normalizeMoney(match[1]) : null;
   }
 
+  function allNumbers(text) {
+    return [...String(text).matchAll(MONEY_REGEX)]
+      .map(m => normalizeMoney(m[1]))
+      .filter(v => v !== null);
+  }
+
+  function numberNear(text, labelRegex, maxChars = 180, preferLast = false) {
+    const match = text.match(labelRegex);
+    if (!match || match.index === undefined) return null;
+    const slice = text.slice(match.index, match.index + maxChars);
+    const nums = allNumbers(slice);
+    if (!nums.length) return null;
+    return preferLast ? nums[nums.length - 1] : nums[0];
+  }
+
+  function findNetTotal(normalized) {
+    const direct = firstNumberAfter(normalized, /NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
+    if (direct !== null) return direct;
+
+    const compact = normalized.replace(/\s+/g, ' ');
+    const match = compact.match(/GAINS\s+NETS\s+NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
+    if (match) return normalizeMoney(match[1]);
+
+    return null;
+  }
+
+  function findTotalDeductions(normalized) {
+    // Bottom footer format: TOTAL DES RETENUES TOTAL DEDUCTIONS 543.34 GAINS NETS...
+    const bottom = normalized.match(/TOTAL\s+DES\s+RETENUES\s+TOTAL\s+DEDUCTIONS\s+(\d+(?:[,.]\d+)?)/i);
+    if (bottom) return normalizeMoney(bottom[1]);
+
+    const french = numberNear(normalized, /RETENUES\s+À\s+DATE|RETENUES\s+A\s+DATE/i, 120, false);
+    if (french !== null) return french;
+
+    return null;
+  }
+
   function parseMetroPaystub(text) {
     const normalized = text.replace(/\s+/g, ' ').trim();
 
@@ -38,20 +75,18 @@ window.PaystubPDF = (() => {
     let deductions = null;
     let netPay = null;
 
-    // Metro line normally looks like:
+    // Format sometimes extracted in a single line:
     // GAINS NETS 1619.53 543.34 NET TOTAL *****1076.19
-    // Use strict numeric groups so the first number cannot swallow the next fields.
-    const totals = normalized.match(/GAINS\s+NETS\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+NET\s+TOTAL\s+\*?\*?\*?\*?\*?\s*(\d+(?:[,.]\d+)?)/i);
+    const totals = normalized.match(/GAINS\s+NETS\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
     if (totals) {
       grossPay = normalizeMoney(totals[1]);
       deductions = normalizeMoney(totals[2]);
       netPay = normalizeMoney(totals[3]);
     }
 
-    // Fallbacks for OCR/text extraction variations.
-    if (netPay === null) netPay = firstNumberAfter(normalized, /NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
-    if (grossPay === null) grossPay = firstNumberAfter(normalized, /GAINS\s+NETS\s+(\d+(?:[,.]\d+)?)/i);
-    if (deductions === null && grossPay !== null && netPay !== null) deductions = grossPay - netPay;
+    // Column/footer fallback.
+    if (netPay === null) netPay = findNetTotal(normalized);
+    if (deductions === null) deductions = findTotalDeductions(normalized);
 
     // HRS.REG. 37.50 39.743 1490.36 18811.95
     const regular = normalized.match(/HRS\.?\s*REG\.?\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
@@ -74,7 +109,23 @@ window.PaystubPDF = (() => {
     const overtimeRate15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[2]) : null;
     const overtimeAmount15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[3]) : null;
 
-    if (!grossPay && !netPay && !regularHours) return null;
+    // If footer gave net/deductions but not gross, infer gross.
+    if (grossPay === null && netPay !== null && deductions !== null) {
+      grossPay = Math.round((netPay + deductions) * 100) / 100;
+    }
+
+    // If gross still missing, rebuild from current earnings.
+    if (grossPay === null) {
+      const pieces = [regularAmount, overtimeAmount1x, overtimeAmount15x].filter(v => v !== null && Number.isFinite(v));
+      if (pieces.length) grossPay = Math.round(pieces.reduce((a, b) => a + b, 0) * 100) / 100;
+    }
+
+    // If deductions missing but gross/net available, infer deductions.
+    if (deductions === null && grossPay !== null && netPay !== null) {
+      deductions = Math.round((grossPay - netPay) * 100) / 100;
+    }
+
+    if (!grossPay && !netPay && !regularHours && !deductions) return null;
 
     return {
       source: 'metro',
@@ -188,7 +239,17 @@ window.PaystubPDF = (() => {
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
-      const pageText = content.items.map(item => item.str).join(' ');
+
+      // Sort by visual position to improve extraction from column-based payroll PDFs.
+      const items = content.items
+        .map(item => ({ str: item.str, x: item.transform?.[4] || 0, y: item.transform?.[5] || 0 }))
+        .filter(item => item.str && item.str.trim())
+        .sort((a, b) => {
+          if (Math.abs(b.y - a.y) > 3) return b.y - a.y;
+          return a.x - b.x;
+        });
+
+      const pageText = items.map(item => item.str).join(' ');
       pages.push(pageText);
     }
 
