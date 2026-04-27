@@ -37,33 +37,36 @@ window.PaystubPDF = (() => {
       .filter(v => v !== null);
   }
 
-  function numberNear(text, labelRegex, maxChars = 180, preferLast = false) {
-    const match = text.match(labelRegex);
-    if (!match || match.index === undefined) return null;
-    const slice = text.slice(match.index, match.index + maxChars);
-    const nums = allNumbers(slice);
-    if (!nums.length) return null;
-    return preferLast ? nums[nums.length - 1] : nums[0];
+  function cleanAmount(value) {
+    const n = normalizeMoney(value);
+    if (n === null) return null;
+    return Math.round(n * 100) / 100;
   }
 
   function findNetTotal(normalized) {
     const direct = firstNumberAfter(normalized, /NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
     if (direct !== null) return direct;
-
     const compact = normalized.replace(/\s+/g, ' ');
     const match = compact.match(/GAINS\s+NETS\s+NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
     if (match) return normalizeMoney(match[1]);
-
     return null;
   }
 
   function findTotalDeductions(normalized) {
-    // Bottom footer format: TOTAL DES RETENUES TOTAL DEDUCTIONS 543.34 GAINS NETS...
     const bottom = normalized.match(/TOTAL\s+DES\s+RETENUES\s+TOTAL\s+DEDUCTIONS\s+(\d+(?:[,.]\d+)?)/i);
-    if (bottom) return normalizeMoney(bottom[1]);
+    if (bottom) return cleanAmount(bottom[1]);
+    return null;
+  }
 
-    const french = numberNear(normalized, /RETENUES\s+À\s+DATE|RETENUES\s+A\s+DATE/i, 120, false);
-    if (french !== null) return french;
+  function findTotalEarnings(normalized) {
+    // Bottom footer format is the most reliable:
+    // TOTAL DES GAINS TOTAL EARNINGS 1619.53 TOTAL DES RETENUES...
+    const bottom = normalized.match(/TOTAL\s+DES\s+GAINS\s+TOTAL\s+EARNINGS\s+(\d+(?:[,.]\d+)?)/i);
+    if (bottom) return cleanAmount(bottom[1]);
+
+    // Another possible extraction order around bottom footer.
+    const bottomLoose = normalized.match(/TOTAL\s+EARNINGS\s+(\d+(?:[,.]\d+)?)/i);
+    if (bottomLoose) return cleanAmount(bottomLoose[1]);
 
     return null;
   }
@@ -75,18 +78,20 @@ window.PaystubPDF = (() => {
     let deductions = null;
     let netPay = null;
 
+    // Footer totals have priority because they are the pay-period totals.
+    grossPay = findTotalEarnings(normalized);
+    deductions = findTotalDeductions(normalized);
+    netPay = findNetTotal(normalized);
+
     // Format sometimes extracted in a single line:
     // GAINS NETS 1619.53 543.34 NET TOTAL *****1076.19
+    // Only use this if footer values were not found.
     const totals = normalized.match(/GAINS\s+NETS\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
     if (totals) {
-      grossPay = normalizeMoney(totals[1]);
-      deductions = normalizeMoney(totals[2]);
-      netPay = normalizeMoney(totals[3]);
+      if (grossPay === null) grossPay = cleanAmount(totals[1]);
+      if (deductions === null) deductions = cleanAmount(totals[2]);
+      if (netPay === null) netPay = cleanAmount(totals[3]);
     }
-
-    // Column/footer fallback.
-    if (netPay === null) netPay = findNetTotal(normalized);
-    if (deductions === null) deductions = findTotalDeductions(normalized);
 
     // HRS.REG. 37.50 39.743 1490.36 18811.95
     const regular = normalized.match(/HRS\.?\s*REG\.?\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
@@ -99,28 +104,37 @@ window.PaystubPDF = (() => {
 
     const regularHours = regular ? normalizeMoney(regular[1]) : null;
     const hourlyRate = regular ? normalizeMoney(regular[2]) : null;
-    const regularAmount = regular ? normalizeMoney(regular[3]) : null;
+    const regularAmount = regular ? cleanAmount(regular[3]) : null;
 
     const overtimeHours1x = overtimeOne ? normalizeMoney(overtimeOne[1]) : 0;
     const overtimeRate1x = overtimeOne ? normalizeMoney(overtimeOne[2]) : null;
-    const overtimeAmount1x = overtimeOne ? normalizeMoney(overtimeOne[3]) : null;
+    const overtimeAmount1x = overtimeOne ? cleanAmount(overtimeOne[3]) : null;
 
     const overtimeHours15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[1]) : 0;
     const overtimeRate15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[2]) : null;
-    const overtimeAmount15x = overtimeOneHalf ? normalizeMoney(overtimeOneHalf[3]) : null;
+    const overtimeAmount15x = overtimeOneHalf ? cleanAmount(overtimeOneHalf[3]) : null;
 
     // If footer gave net/deductions but not gross, infer gross.
     if (grossPay === null && netPay !== null && deductions !== null) {
       grossPay = Math.round((netPay + deductions) * 100) / 100;
     }
 
-    // If gross still missing, rebuild from current earnings.
+    // If gross still missing, rebuild only from current earnings lines.
     if (grossPay === null) {
-      const pieces = [regularAmount, overtimeAmount1x, overtimeAmount15x].filter(v => v !== null && Number.isFinite(v));
+      const pieces = [regularAmount, overtimeAmount1x, overtimeAmount15x]
+        .filter(v => v !== null && Number.isFinite(v));
       if (pieces.length) grossPay = Math.round(pieces.reduce((a, b) => a + b, 0) * 100) / 100;
     }
 
-    // If deductions missing but gross/net available, infer deductions.
+    // Guard: if gross is clearly wrong but net + deductions are reliable, correct it.
+    // This prevents columns/date-to-date totals from being mistaken for current gross.
+    if (grossPay !== null && netPay !== null && deductions !== null) {
+      const inferredGross = Math.round((netPay + deductions) * 100) / 100;
+      if (Math.abs(grossPay - inferredGross) > 2 && inferredGross > 0) {
+        grossPay = inferredGross;
+      }
+    }
+
     if (deductions === null && grossPay !== null && netPay !== null) {
       deductions = Math.round((grossPay - netPay) * 100) / 100;
     }
@@ -240,7 +254,6 @@ window.PaystubPDF = (() => {
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
 
-      // Sort by visual position to improve extraction from column-based payroll PDFs.
       const items = content.items
         .map(item => ({ str: item.str, x: item.transform?.[4] || 0, y: item.transform?.[5] || 0 }))
         .filter(item => item.str && item.str.trim())
