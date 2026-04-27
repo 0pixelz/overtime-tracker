@@ -1,5 +1,6 @@
 // stats-projection-fix.js
 // Corrige la projection annuelle pour utiliser une semaine normale de 37,5 h sans overtime.
+// Version anti-glitch: corrige la projection immédiatement quand stats-fix.js la réécrit.
 (() => {
   if (window.__statsProjectionFixLoaded) return;
   window.__statsProjectionFixLoaded = true;
@@ -17,8 +18,8 @@
   };
 
   const NORMAL_DEDUCTION_RATE = REF_NORMAL.deductions / REF_NORMAL.gross;
-
   const $ = (id) => document.getElementById(id);
+  let applying = false;
 
   function money(value) {
     if (value == null || Number.isNaN(Number(value))) return '—';
@@ -46,23 +47,36 @@
     return DEFAULT_HOURLY_RATE;
   }
 
-  function updateProjection() {
-    const statsView = $('statsViewFix');
-    if (!statsView || !statsView.classList.contains('show')) return;
-
+  function expectedProjection() {
     const rate = hourlyRate();
     const weeklyGross = BASE_WEEKLY_HOURS * rate;
     const weeklyDeductions = weeklyGross * NORMAL_DEDUCTION_RATE;
     const weeklyNet = weeklyGross - weeklyDeductions;
 
-    const annualHours = BASE_WEEKLY_HOURS * WEEKS_PER_YEAR;
-    const annualGross = weeklyGross * WEEKS_PER_YEAR;
-    const annualNet = weeklyNet * WEEKS_PER_YEAR;
+    return {
+      annualHours: BASE_WEEKLY_HOURS * WEEKS_PER_YEAR,
+      annualOvertime: 0,
+      annualGross: weeklyGross * WEEKS_PER_YEAR,
+      annualNet: weeklyNet * WEEKS_PER_YEAR
+    };
+  }
 
-    if ($('statsProjHours')) $('statsProjHours').textContent = hours(annualHours);
-    if ($('statsProjOt')) $('statsProjOt').textContent = hours(0);
-    if ($('statsProjGross')) $('statsProjGross').textContent = money(annualGross);
-    if ($('statsProjNet')) $('statsProjNet').textContent = money(annualNet);
+  function setText(id, value) {
+    const el = $(id);
+    if (el && el.textContent !== value) el.textContent = value;
+  }
+
+  function updateProjection() {
+    const statsView = $('statsViewFix');
+    if (!statsView || !statsView.classList.contains('show') || applying) return;
+
+    applying = true;
+    const p = expectedProjection();
+
+    setText('statsProjHours', hours(p.annualHours));
+    setText('statsProjOt', hours(p.annualOvertime));
+    setText('statsProjGross', money(p.annualGross));
+    setText('statsProjNet', money(p.annualNet));
 
     const projectionCard = $('statsProjHours')?.closest('.card');
     if (projectionCard && !document.getElementById('statsProjectionBaseNote')) {
@@ -73,11 +87,29 @@
       note.textContent = 'Projection basée sur 37,5 h/semaine, sans overtime.';
       projectionCard.appendChild(note);
     }
+
+    applying = false;
+  }
+
+  function observeProjection() {
+    const target = document.body;
+    const observer = new MutationObserver(() => updateProjection());
+    observer.observe(target, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['class']
+    });
   }
 
   function init() {
     updateProjection();
-    setInterval(updateProjection, 500);
+    observeProjection();
+    window.addEventListener('storage', updateProjection);
+    document.addEventListener('input', (e) => {
+      if (e.target && e.target.id === 'payHourlyRateInput') setTimeout(updateProjection, 0);
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
