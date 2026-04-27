@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v12';
+const CACHE = 'heures-sup-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -14,7 +14,8 @@ const ASSETS = [
   './ai-assistant.js',
   './menu-polish.js',
   './ai-data-entry.js',
-  './navigation-recovery.js'
+  './navigation-recovery.js',
+  './gemini-assistant-bridge.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -47,6 +48,7 @@ async function withExtraScripts(response) {
   if (!html.includes('menu-polish.js')) scripts.push('<script src="./menu-polish.js"></script>');
   if (!html.includes('ai-data-entry.js')) scripts.push('<script src="./ai-data-entry.js"></script>');
   if (!html.includes('navigation-recovery.js')) scripts.push('<script src="./navigation-recovery.js"></script>');
+  if (!html.includes('gemini-assistant-bridge.js')) scripts.push('<script src="./gemini-assistant-bridge.js"></script>');
   if (scripts.length) html = html.replace('</body>', scripts.join('') + '</body>');
 
   return new Response(html, {
@@ -73,6 +75,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/menu-polish.js') ||
     url.pathname.endsWith('/ai-data-entry.js') ||
     url.pathname.endsWith('/navigation-recovery.js') ||
+    url.pathname.endsWith('/gemini-assistant-bridge.js') ||
     url.pathname.endsWith('/service-worker.js');
 
   if (isHtml) {
