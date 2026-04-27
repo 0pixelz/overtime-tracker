@@ -1228,6 +1228,26 @@
       flex-shrink: 0;
     }
 
+    .notif-switch {
+      width: 44px; height: 26px;
+      border-radius: 13px;
+      background: var(--border-strong);
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .notif-switch.on { background: var(--accent); }
+    .notif-switch-thumb {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
+    }
+    .notif-switch.on .notif-switch-thumb { transform: translateX(18px); }
+
     /* Language picker */
     .lang-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -1617,6 +1637,19 @@
         </div>
         <div class="settings-chevron">›</div>
       </button>
+
+      <button class="settings-item" id="notifToggleBtn" type="button">
+        <div class="settings-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </div>
+        <div class="settings-item-text">
+          <div class="settings-item-title" data-i18n="settings.notifications">Notifications</div>
+          <div class="settings-item-desc" data-i18n="settings.notificationsDesc">Rappel si les heures ne sont pas saisies</div>
+        </div>
+        <div class="notif-switch" id="notifSwitch">
+          <div class="notif-switch-thumb"></div>
+        </div>
+      </button>
     </div>
 
     <!-- View: theme -->
@@ -1713,6 +1746,7 @@
         theme: 'dark',
         lang: 'fr',
         calendarType: 'mon_fri',
+        notifications: true,
         defaults: { start: '08:00', end: '16:30', meal: 60 }
       }
     };
@@ -1768,7 +1802,12 @@
           hours: 'Horaires par défaut', hoursDesc: 'Appliqués aux nouvelles journées',
           language: 'Langue', languageDesc: 'Français ou anglais',
           week: 'Semaine', weekDesc: 'Lundi à vendredi ou dimanche à samedi',
-          mealDefault: 'Durée du repas par défaut'
+          mealDefault: 'Durée du repas par défaut',
+          notifications: 'Notifications', notificationsDesc: 'Rappel si les heures ne sont pas saisies'
+        },
+        notification: {
+          title: 'Heures sup.',
+          body: 'Tu n\'as pas encore entré tes heures pour aujourd\'hui.'
         },
         toast: {
           deleted: 'Entrée supprimée', installed: 'Application installée',
@@ -1841,7 +1880,12 @@
           hours: 'Default hours', hoursDesc: 'Applied to new days',
           language: 'Language', languageDesc: 'French or English',
           week: 'Week', weekDesc: 'Monday–Friday or Sunday–Saturday',
-          mealDefault: 'Default meal duration'
+          mealDefault: 'Default meal duration',
+          notifications: 'Notifications', notificationsDesc: 'Reminder if hours are not entered'
+        },
+        notification: {
+          title: 'Work hours',
+          body: 'You haven\'t entered your hours for today yet.'
         },
         toast: {
           deleted: 'Entry deleted', installed: 'App installed',
@@ -1899,6 +1943,7 @@
           if (parsed.calendarType && (parsed.calendarType === 'mon_fri' || parsed.calendarType === 'sun_sat')) {
             state.settings.calendarType = parsed.calendarType;
           }
+          if (parsed.notifications !== undefined) state.settings.notifications = !!parsed.notifications;
           if (parsed.defaults) {
             if (parsed.defaults.start) state.settings.defaults.start = parsed.defaults.start;
             if (parsed.defaults.end) state.settings.defaults.end = parsed.defaults.end;
@@ -2339,6 +2384,42 @@
       showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
     }
 
+    // ============ WORK HOURS NOTIFICATION ============
+    function isTodayWorkday() {
+      const dow = new Date().getDay();
+      return dow >= 1 && dow <= 5;
+    }
+
+    function isTodayEntryComplete() {
+      const key = dateKey(new Date());
+      const entry = state.entries[key];
+      if (!entry) return false;
+      if (entry.type === 'leave') return true;
+      return !!(entry.start && entry.end);
+    }
+
+    async function checkWorkHoursNotification() {
+      if (!state.settings.notifications) return;
+      if (!isTodayWorkday()) return;
+      if (isTodayEntryComplete()) return;
+      if (!('Notification' in window)) return;
+
+      if (Notification.permission === 'granted') {
+        new Notification(t('notification.title'), {
+          body: t('notification.body'),
+          icon: 'icon-192.png'
+        });
+      } else if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          new Notification(t('notification.title'), {
+            body: t('notification.body'),
+            icon: 'icon-192.png'
+          });
+        }
+      }
+    }
+
     function autoSave() {
       const key = dateKey(state.currentDate);
       const isLeave = typeLeave.classList.contains('active');
@@ -2501,6 +2582,7 @@
     renderTheme();
     state.calMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
     renderAll();
+    setTimeout(checkWorkHoursNotification, 1000);
 
     // ============ EXPORT SHEET ============
     const menuBtn = $('menuBtn');
@@ -3046,6 +3128,12 @@
       });
     }
 
+    function renderNotifToggle() {
+      const sw = $('notifSwitch');
+      if (!sw) return;
+      sw.classList.toggle('on', !!state.settings.notifications);
+    }
+
     function renderThemeGrid() {
       if (!themeGrid) return;
       themeGrid.innerHTML = '';
@@ -3076,6 +3164,7 @@
       renderThemeGrid();
       renderLangList();
       renderWeekPicker();
+      renderNotifToggle();
       updateSettingsValues();
       defStart.value = state.settings.defaults.start;
       defEnd.value = state.settings.defaults.end;
@@ -3136,6 +3225,20 @@
         renderAll();
       });
     });
+
+    // Notifications toggle
+    const notifToggleBtn = $('notifToggleBtn');
+    if (notifToggleBtn) {
+      notifToggleBtn.addEventListener('click', async () => {
+        const newVal = !state.settings.notifications;
+        state.settings.notifications = newVal;
+        saveSettings();
+        renderNotifToggle();
+        if (newVal && 'Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+          await Notification.requestPermission();
+        }
+      });
+    }
 
     // Clear day button logic (uses lazy DOM lookups so init order doesn't matter)
     var clearConfirmTimer = null;
