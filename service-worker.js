@@ -1,4 +1,4 @@
-const CACHE = 'heures-sup-v3';
+const CACHE = 'heures-sup-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -19,7 +19,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(keys.map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -29,10 +29,14 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // Always try network first for HTML so manual updates to index.html are visible quickly.
-  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
+  const url = new URL(req.url);
+  const isHtml = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
+  const isAppScript = url.pathname.endsWith('/paystub-ui.js') || url.pathname.endsWith('/paystub-pdf.js') || url.pathname.endsWith('/service-worker.js');
+
+  // Always reload HTML and app scripts from network first so updates appear quickly.
+  if (isHtml || isAppScript) {
     event.respondWith(
-      fetch(req, { cache: 'no-store' })
+      fetch(req, { cache: 'reload' })
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
@@ -43,7 +47,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For JS/CSS/images: network first, cache fallback.
   event.respondWith(
     fetch(req)
       .then((res) => {
