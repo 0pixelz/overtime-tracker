@@ -7,6 +7,8 @@
   const $ = (id) => document.getElementById(id);
   const BASE_REGULAR_HOURS = 37.5;
   const OVERTIME_15_THRESHOLD = 40;
+  const DEFAULT_RRQ_MAX = 4895;
+  const DEFAULT_RRQ_NORMAL_WEEKLY = 94.23;
 
   function readJson(key) {
     try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; }
@@ -45,6 +47,10 @@
 
   function fmtDate(date) {
     return date.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function fmtMonth(date) {
+    return date.toLocaleDateString('fr-CA', { month: 'long', year: 'numeric' });
   }
 
   function dkey(date) {
@@ -148,6 +154,8 @@
       pdfDeductions: p.deductions,
       rrq: p.rrq,
       rrqYtd: p.rrqYtd,
+      rrqMax: Number(s.rrqMax || DEFAULT_RRQ_MAX),
+      rrqNormalWeekly: Number(s.normalRrqWeekly || DEFAULT_RRQ_NORMAL_WEEKLY),
       importedAt: p.importedAt
     };
   }
@@ -180,6 +188,44 @@
       `Overtime temps simple estimé : ${h(s.simpleOvertime)}\n` +
       `Overtime taux 1.5 estimé : ${h(s.overtime15)}\n` +
       `Jours travaillés : ${s.workedDays}`;
+  }
+
+  function rrqRemainingAnswer() {
+    const d = appSnapshot();
+    const ytd = Number(d.rrqYtd || 0);
+    const max = Number(d.rrqMax || DEFAULT_RRQ_MAX);
+    const weeklyNormal = Number(d.rrqNormalWeekly || DEFAULT_RRQ_NORMAL_WEEKLY);
+    const importedWeekly = Number(d.rrq || 0);
+
+    if (!ytd) {
+      return 'Je n’ai pas encore assez d’information RRQ. Importe un talon de paie PDF pour que je puisse lire le RRQ accumulé à date.';
+    }
+
+    const remaining = Math.max(0, max - ytd);
+    const weeksLeft = weeklyNormal > 0 ? Math.ceil(remaining / weeklyNormal) : null;
+    const finishStart = weeksLeft != null ? addDays(startOfWeek(), weeksLeft * 7) : null;
+    const finishEnd = finishStart ? addDays(finishStart, 6) : null;
+
+    return `RRQ restante à payer\n\n` +
+      `RRQ accumulé : ${money(ytd)}\n` +
+      `Maximum RRQ 2026 : ${money(max)}\n` +
+      `Montant restant : ${money(remaining)}\n\n` +
+      `RRQ semaine importée : ${money(importedWeekly || null)}\n` +
+      `Base utilisée pour l’estimation : ${money(weeklyNormal)} / semaine normale\n\n` +
+      `Semaines restantes estimées : ${weeksLeft != null ? weeksLeft + ' sem.' : '—'}\n` +
+      `Fin estimée : ${finishStart ? fmtDate(finishStart) + ' au ' + fmtDate(finishEnd) : '—'}\n` +
+      `Mois estimé : ${finishStart ? fmtMonth(finishStart) : '—'}\n\n` +
+      `J’utilise la semaine normale au lieu d’une semaine avec overtime pour éviter de sous-estimer le temps restant.`;
+  }
+
+  function rrqGeneralAnswer() {
+    const data = appSnapshot();
+    return `La section RRQ suit le montant accumulé et estime quand tu vas finir de payer.\n\n` +
+      `Données actuelles :\n` +
+      `RRQ semaine importée : ${money(data.rrq)}\n` +
+      `RRQ accumulé : ${money(data.rrqYtd)}\n` +
+      `Maximum RRQ : ${money(data.rrqMax)}\n\n` +
+      `Pour l’estimation restante, l’app utilise une semaine normale de ${money(data.rrqNormalWeekly)} au lieu d’une semaine avec overtime.`;
   }
 
   function createStyles() {
@@ -223,6 +269,7 @@
             <button class="ai-chip" type="button" data-ai-q="Combien d'heures avant le taux 1.5?">Avant taux 1.5</button>
             <button class="ai-chip" type="button" data-ai-q="J'ai fait combien d'heures la semaine dernière?">Semaine dernière</button>
             <button class="ai-chip" type="button" data-ai-q="Combien d'heures ce mois-ci?">Mois</button>
+            <button class="ai-chip" type="button" data-ai-q="Combien de RRQ il me reste à payer?">RRQ restante</button>
             <button class="ai-chip" type="button" data-ai-q="Pourquoi mon net est différent du PDF?">Net PDF</button>
             <button class="ai-chip" type="button" data-ai-q="Comment fonctionne la RRQ?">RRQ</button>
             <button class="ai-chip" type="button" data-ai-q="Comment utiliser la simulation de paie?">Simulation</button>
@@ -300,9 +347,7 @@
     return msg;
   }
 
-  function addMessage(role, text) {
-    createMessage(role, text);
-  }
+  function addMessage(role, text) { createMessage(role, text); }
 
   function typeMessage(text) {
     const chat = $('aiChat');
@@ -323,17 +368,39 @@
     }, speed);
   }
 
+  function isRrqQuestion(q) {
+    return q.includes('rrq') || q.includes('regie') || q.includes('quebec pension') || q.includes('qpp');
+  }
+
+  function isRrqRemainingQuestion(q) {
+    return isRrqQuestion(q) && (
+      q.includes('reste') || q.includes('restant') || q.includes('restante') || q.includes('restants') ||
+      q.includes('a payer') || q.includes('payer') || q.includes('combien') || q.includes('fini') || q.includes('finir')
+    );
+  }
+
+  function isHoursRemainingQuestion(q) {
+    return (
+      (q.includes('heure') || q.includes('heures')) &&
+      (q.includes('restante') || q.includes('reste') || q.includes('avant 37') || q.includes('37,5') || q.includes('37.5') || q.includes('avant 40') || q.includes('40 h') || q.includes('40h'))
+    );
+  }
+
   function answer(question) {
     const q = normalize(question);
     const data = appSnapshot();
 
     if (!q) return 'Écris une question sur les heures, la paie, le PDF, la RRQ, les statistiques ou la simulation.';
 
+    // RRQ doit passer avant les questions d'heures restantes, sinon "combien de RRQ reste à payer" tombe dans le mauvais intent.
+    if (isRrqRemainingQuestion(q)) return rrqRemainingAnswer();
+    if (isRrqQuestion(q)) return rrqGeneralAnswer();
+
     if ((q.includes('combien') || q.includes('fait')) && q.includes('heure') && (q.includes('semaine derniere') || q.includes('derniere semaine'))) return weeklyAnswer(-1);
     if ((q.includes('combien') || q.includes('fait')) && q.includes('heure') && q.includes('mois')) return monthAnswer();
     if ((q.includes('combien') || q.includes('fait') || q.includes('resume')) && q.includes('heure') && q.includes('semaine')) return weeklyAnswer(0);
-    if (q.includes('restante') || q.includes('reste') || q.includes('avant 37') || q.includes('37,5') || q.includes('37.5')) return weeklyAnswer(0);
-    if (q.includes('avant le taux') || q.includes('avant taux') || q.includes('avant 1.5') || q.includes('40h') || q.includes('40 h')) return weeklyAnswer(0);
+    if (isHoursRemainingQuestion(q)) return weeklyAnswer(0);
+    if (q.includes('avant le taux') || q.includes('avant taux') || q.includes('avant 1.5')) return weeklyAnswer(0);
 
     if (q.includes('overtime') || q.includes('temps simple') || q.includes('1.5') || q.includes('supplementaire')) {
       return 'Ton app sépare les heures comme ceci : base régulière jusqu’à 37,5 h, overtime temps simple entre 37,5 h et 40 h, puis overtime taux 1.5 au-dessus de 40 h.\n\nExemple : 40,5 h = 37,5 h base + 2,5 h overtime simple + 0,5 h à 1.5.';
@@ -341,10 +408,6 @@
 
     if (q.includes('net') || q.includes('retenue') || q.includes('brut')) {
       return `Le net estimé est calculé à partir du brut moins les retenues.\n\nSelon ton profil actuel :\nTaux horaire : ${money(data.hourly)}/h\nBrut PDF : ${money(data.pdfGross)}\nRetenues PDF : ${money(data.pdfDeductions)}\nNet PDF : ${money(data.pdfNet)}\n\nUne différence avec le PDF peut arriver si la semaine contient des primes, assurances, ajustements ou déductions spéciales.`;
-    }
-
-    if (q.includes('rrq') || q.includes('regie') || q.includes('quebec')) {
-      return `La section RRQ suit le montant accumulé et estime quand tu vas finir de payer.\n\nDonnées actuelles :\nRRQ semaine importée : ${money(data.rrq)}\nRRQ accumulé : ${money(data.rrqYtd)}\n\nL’estimation utilise une semaine normale de 37,5 h pour éviter qu’une semaine avec overtime fausse la projection.`;
     }
 
     if (q.includes('pdf') || q.includes('talon') || q.includes('import')) {
@@ -363,7 +426,7 @@
 
     if (q.includes('cache') || q.includes('mise a jour') || q.includes('bug') || q.includes('glitch')) return 'Comme ton app est une PWA, le cache peut garder une ancienne version.\n\nFerme/réouvre l’app, puis rafraîchis deux fois. Si ça persiste, va dans les paramètres du navigateur/app et vide le cache du site.';
 
-    return 'Je peux t’aider avec : tes heures cette semaine, heures restantes avant 37,5 h, overtime, net estimé, RRQ, import PDF, statistiques, paramètres de paie, simulation et cache.\n\nEssaie : “J’ai fait combien d’heures cette semaine?”.';
+    return 'Je peux t’aider avec : tes heures cette semaine, heures restantes avant 37,5 h, overtime, net estimé, RRQ restante, import PDF, statistiques, paramètres de paie, simulation et cache.\n\nEssaie : “Combien de RRQ il me reste à payer?” ou “J’ai fait combien d’heures cette semaine?”.';
   }
 
   function sendQuestion(text) {
@@ -383,7 +446,7 @@
     $('aiAssistantView')?.classList.add('show');
     if ($('aiChat') && !$('aiChat').dataset.started) {
       $('aiChat').dataset.started = '1';
-      typeMessage('Salut! Pose-moi une question sur ton app. Je peux te dire combien d’heures tu as fait cette semaine, ton overtime et les heures restantes avant 37,5 h ou 40 h.');
+      typeMessage('Salut! Pose-moi une question sur ton app. Je peux te dire combien d’heures tu as fait cette semaine, ton overtime, les heures restantes avant 37,5 h ou 40 h, et la RRQ restante à payer.');
     }
     setActiveMenu();
     closeMenu();
