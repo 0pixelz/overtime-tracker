@@ -34,22 +34,33 @@ window.PaystubPDF = (() => {
   function parseMetroPaystub(text) {
     const normalized = text.replace(/\s+/g, ' ').trim();
 
-    // Metro format example:
+    let grossPay = null;
+    let deductions = null;
+    let netPay = null;
+
+    // Metro line normally looks like:
     // GAINS NETS 1619.53 543.34 NET TOTAL *****1076.19
-    const totals = normalized.match(/GAINS\s+NETS\s+([\d\s,.]+)\s+([\d\s,.]+)\s+NET\s+TOTAL\s+\*{0,}\s*([\d\s,.]+)/i);
+    // Use strict numeric groups so the first number cannot swallow the next fields.
+    const totals = normalized.match(/GAINS\s+NETS\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+NET\s+TOTAL\s+\*?\*?\*?\*?\*?\s*(\d+(?:[,.]\d+)?)/i);
+    if (totals) {
+      grossPay = normalizeMoney(totals[1]);
+      deductions = normalizeMoney(totals[2]);
+      netPay = normalizeMoney(totals[3]);
+    }
+
+    // Fallbacks for OCR/text extraction variations.
+    if (netPay === null) netPay = firstNumberAfter(normalized, /NET\s+TOTAL\s+\*+\s*(\d+(?:[,.]\d+)?)/i);
+    if (grossPay === null) grossPay = firstNumberAfter(normalized, /GAINS\s+NETS\s+(\d+(?:[,.]\d+)?)/i);
+    if (deductions === null && grossPay !== null && netPay !== null) deductions = grossPay - netPay;
 
     // HRS.REG. 37.50 39.743 1490.36 18811.95
-    const regular = normalized.match(/HRS\.?\s*REG\.?\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/i);
+    const regular = normalized.match(/HRS\.?\s*REG\.?\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
 
     // TS X 1.0 2.50 39.743 99.36 278.21
-    const overtimeOne = normalized.match(/TS\s*X\s*1[,.]0\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/i);
+    const overtimeOne = normalized.match(/TS\s*X\s*1[,.]0\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
 
     // TS X 1.5 0.50 59.615 29.81 59.62
-    const overtimeOneHalf = normalized.match(/TS\s*X\s*1[,.]5\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/i);
-
-    const grossPay = totals ? normalizeMoney(totals[1]) : null;
-    const deductions = totals ? normalizeMoney(totals[2]) : null;
-    const netPay = totals ? normalizeMoney(totals[3]) : null;
+    const overtimeOneHalf = normalized.match(/TS\s*X\s*1[,.]5\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)\s+(\d+(?:[,.]\d+)?)/i);
 
     const regularHours = regular ? normalizeMoney(regular[1]) : null;
     const hourlyRate = regular ? normalizeMoney(regular[2]) : null;
@@ -81,11 +92,11 @@ window.PaystubPDF = (() => {
       overtimeHours15x,
       overtimeRate15x,
       overtimeAmount15x,
-      federalTax: firstNumberAfter(normalized, /IMP\.?\s*FED\s+([\d,.]+)/i),
-      provincialTax: firstNumberAfter(normalized, /IMP\.?\s*PROV\s+([\d,.]+)/i),
-      rrq: firstNumberAfter(normalized, /R\.?R\.?Q\.?\s+([\d,.]+)/i),
-      rqap: firstNumberAfter(normalized, /RQAP\s+([\d,.]+)/i),
-      ei: firstNumberAfter(normalized, /ASS\.?\s*EMP\.?\s+([\d,.]+)/i)
+      federalTax: firstNumberAfter(normalized, /IMP\.?\s*FED\s+(\d+(?:[,.]\d+)?)/i),
+      provincialTax: firstNumberAfter(normalized, /IMP\.?\s*PROV\s+(\d+(?:[,.]\d+)?)/i),
+      rrq: firstNumberAfter(normalized, /R\.?R\.?Q\.?\s+(\d+(?:[,.]\d+)?)/i),
+      rqap: firstNumberAfter(normalized, /RQAP\s+(\d+(?:[,.]\d+)?)/i),
+      ei: firstNumberAfter(normalized, /ASS\.?\s*EMP\.?\s+(\d+(?:[,.]\d+)?)/i)
     };
   }
 
