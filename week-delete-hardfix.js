@@ -1,12 +1,12 @@
 // week-delete-hardfix.js
-// Dernier filet de sécurité: supprime les heures d'une ligne swipée en couvrant les formats
-// les plus probables: objet par date, tableau d'entrées, objet par mois/jour, et valeurs d'heure directes.
+// Supprime une ligne swipée, incluant les journées avec overtime.
 (() => {
   if (window.__weekDeleteHardfixLoaded) return;
   window.__weekDeleteHardfixLoaded = true;
 
   const MONTHS = { janv:0, fevr:1, fevrier:1, mars:2, avr:3, avril:3, mai:4, juin:5, juil:6, aout:7, sept:8, oct:9, nov:10, dec:11 };
-  const DAY_NAMES = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const DATE_FIELDS = ['date','day','key','id','entryDate','workDate','selectedDate','createdFor','startDate','endDate'];
+  const HOUR_FIELDS = ['hours','totalHours','workedHours','duration','regularHours','overtime','overtimeHours','extraHours','supHours','heures','heuresSup','heuresSupplementaires','start','end','startTime','endTime','debut','fin','meal','mealMinutes','pause','break'];
 
   const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\./g, '').trim();
   const pad = n => String(n).padStart(2, '0');
@@ -31,51 +31,71 @@
     const sub = norm(wrap?.querySelector('.week-day-sub')?.textContent || '');
     const label = norm(wrap?.querySelector('.week-day-label')?.textContent || '');
     const match = sub.match(/(\d{1,2})\s+([a-z]+)/);
-    if (match) {
-      const base = getYearMonth();
-      let m = MONTHS[match[2]] == null ? base.m : MONTHS[match[2]] + 1;
-      let y = base.y;
-      if (base.m === 1 && m === 12) y -= 1;
-      if (base.m === 12 && m === 1) y += 1;
-      return { y, m, d: Number(match[1]), weekday: label };
-    }
-    return null;
-  }
-
-  function variants(d) {
-    if (!d) return [];
-    const iso = keyOf(d), slash = `${d.y}/${pad(d.m)}/${pad(d.d)}`, compact = `${d.y}${pad(d.m)}${pad(d.d)}`;
-    const fr = `${d.d}/${d.m}/${d.y}`;
-    const monthKey = `${d.y}-${pad(d.m)}`;
-    return Array.from(new Set([iso, slash, compact, fr, monthKey, String(d.d), pad(d.d), d.weekday].filter(Boolean).map(norm)));
-  }
-
-  function maybeDateMatch(value, d, vars) {
-    const s = norm(value);
-    if (!s) return false;
-    if (s.includes(keyOf(d)) || s.includes(`${d.y}/${pad(d.m)}/${pad(d.d)}`) || s.includes(`${d.y}${pad(d.m)}${pad(d.d)}`)) return true;
-    if (s === String(d.d) || s === pad(d.d)) return true;
-    if (d.weekday && s === norm(d.weekday)) return true;
-    return false;
+    if (!match) return null;
+    const base = getYearMonth();
+    let m = MONTHS[match[2]] == null ? base.m : MONTHS[match[2]] + 1;
+    let y = base.y;
+    if (base.m === 1 && m === 12) y -= 1;
+    if (base.m === 12 && m === 1) y += 1;
+    return { y, m, d: Number(match[1]), weekday: label };
   }
 
   function readJSON(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
   function writeJSON(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 
-  function isEntryForDate(obj, d) {
+  function dateStrings(d) {
+    return [
+      keyOf(d),
+      `${d.y}/${pad(d.m)}/${pad(d.d)}`,
+      `${d.y}${pad(d.m)}${pad(d.d)}`,
+      `${d.d}/${d.m}/${d.y}`,
+      `${pad(d.d)}/${pad(d.m)}/${d.y}`
+    ].map(norm);
+  }
+
+  function valueMatchesDate(value, d) {
+    const s = norm(value);
+    if (!s) return false;
+    return dateStrings(d).some(x => s.includes(x));
+  }
+
+  function keyMatchesDate(key, d) {
+    const k = norm(key);
+    if (valueMatchesDate(k, d)) return true;
+    if (k === String(d.d) || k === pad(d.d)) return true;
+    return false;
+  }
+
+  function objectHasDate(obj, d) {
     if (!obj || typeof obj !== 'object') return false;
-    const dateFields = ['date','day','key','id','entryDate','workDate','selectedDate','createdFor'];
-    return dateFields.some(f => maybeDateMatch(obj[f], d, variants(d)));
+    return DATE_FIELDS.some(f => valueMatchesDate(obj[f], d));
+  }
+
+  function clearHourFields(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+    let changed = false;
+    Object.keys(obj).forEach(k => {
+      const nk = norm(k);
+      const isHourField = HOUR_FIELDS.some(f => nk === norm(f) || nk.includes(norm(f))) || nk.includes('overtime') || nk.includes('sup');
+      if (isHourField) {
+        if (typeof obj[k] === 'number') obj[k] = 0;
+        else if (typeof obj[k] === 'string') obj[k] = '';
+        else if (typeof obj[k] === 'boolean') obj[k] = false;
+        else if (obj[k] && typeof obj[k] === 'object') obj[k] = Array.isArray(obj[k]) ? [] : {};
+        changed = true;
+      }
+    });
+    return changed;
   }
 
   function cleanNode(node, d, depth = 0) {
-    if (!node || typeof node !== 'object' || depth > 9) return { value: node, removed: 0, changed: false };
+    if (!node || typeof node !== 'object' || depth > 10) return { value: node, removed: 0, changed: false };
 
     if (Array.isArray(node)) {
       let removed = 0, changed = false;
       const next = [];
       node.forEach(item => {
-        if (isEntryForDate(item, d)) { removed++; changed = true; return; }
+        if (objectHasDate(item, d)) { removed++; changed = true; return; }
         const r = cleanNode(item, d, depth + 1);
         removed += r.removed; changed = changed || r.changed; next.push(r.value);
       });
@@ -85,18 +105,22 @@
     const out = { ...node };
     let removed = 0, changed = false;
 
+    // Object itself represents the selected date: clear its hour fields too, for overtime structures that are reused.
+    if (objectHasDate(out, d)) {
+      if (clearHourFields(out)) changed = true;
+    }
+
     Object.keys(out).forEach(k => {
       const child = out[k];
       const nk = norm(k);
 
-      // Direct date key or day key inside a month object.
-      if (maybeDateMatch(k, d, variants(d))) {
+      if (keyMatchesDate(k, d)) {
         delete out[k]; removed++; changed = true; return;
       }
 
-      // Month object: { "2026-04": { "13": {...} } }
+      // Month bucket like { "2026-04": { "16": {...} } }
       if ((nk === `${d.y}-${pad(d.m)}` || nk === `${d.y}/${pad(d.m)}` || nk === `${d.y}${pad(d.m)}`) && child && typeof child === 'object') {
-        [''+d.d, pad(d.d), keyOf(d)].forEach(dayKey => {
+        [String(d.d), pad(d.d), keyOf(d)].forEach(dayKey => {
           if (Object.prototype.hasOwnProperty.call(child, dayKey)) {
             delete child[dayKey]; removed++; changed = true;
           }
@@ -105,7 +129,9 @@
       }
 
       if (child && typeof child === 'object') {
-        if (isEntryForDate(child, d)) { delete out[k]; removed++; changed = true; return; }
+        if (objectHasDate(child, d)) {
+          delete out[k]; removed++; changed = true; return;
+        }
         const r = cleanNode(child, d, depth + 1);
         if (r.changed) { out[k] = r.value; removed += r.removed; changed = true; }
       }
@@ -114,11 +140,33 @@
     return { value: out, removed, changed };
   }
 
+  function clearNativeInputsForDate(d) {
+    const dateInput = document.querySelector('input[type="date"]');
+    if (dateInput) {
+      dateInput.value = keyOf(d);
+      dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+      dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    setTimeout(() => {
+      document.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.type === 'date') return;
+        const text = norm(`${el.id} ${el.name} ${el.placeholder} ${el.className}`);
+        if (HOUR_FIELDS.some(f => text.includes(norm(f))) || text.includes('sup') || text.includes('overtime')) {
+          el.value = '';
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    }, 80);
+  }
+
   function clearVisibleLine(wrap) {
     const hours = wrap?.querySelector('.week-day-hours');
     const extra = wrap?.querySelector('.week-day-extra');
+    const quick = wrap?.querySelector('.week-day-quick');
     if (hours) { hours.textContent = '—'; hours.classList.add('empty'); hours.classList.remove('overtime'); }
     if (extra) extra.textContent = '';
+    if (quick) quick.remove();
     wrap?.classList.remove('revealed','revealed-left','deleting');
   }
 
@@ -126,12 +174,10 @@
     let removed = 0;
     const changedKeys = [];
     const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i); if (k) keys.push(k);
-    }
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k) keys.push(k); }
 
     keys.forEach(k => {
-      if (maybeDateMatch(k, d, variants(d))) { localStorage.removeItem(k); removed++; changedKeys.push(k); return; }
+      if (keyMatchesDate(k, d)) { localStorage.removeItem(k); removed++; changedKeys.push(k); return; }
       const data = readJSON(k);
       if (!data || typeof data !== 'object') return;
       const r = cleanNode(data, d);
@@ -158,9 +204,10 @@
     const wrap = btn.closest('.week-row-swipe-wrap');
     const d = rowDate(wrap);
     if (!d) { toast('Date introuvable'); return; }
+    clearNativeInputsForDate(d);
     const result = deleteDate(d);
     clearVisibleLine(wrap);
-    toast(result.removed ? 'Journée supprimée' : 'Ligne vidée');
-    setTimeout(() => location.reload(), 400);
+    toast('Journée supprimée');
+    setTimeout(() => location.reload(), 650);
   }, true);
 })();
