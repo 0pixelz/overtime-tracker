@@ -7,7 +7,14 @@
   window.__geminiAssistantBridgeLoaded = true;
 
   const DEFAULT_ENDPOINT = '/api/assistant';
-  const MODEL = 'gemini-1.5-flash';
+  const MODEL_CACHE_KEY = 'GEMINI_SELECTED_MODEL';
+  const PREFERRED_MODELS = [
+    'models/gemini-2.0-flash',
+    'models/gemini-2.0-flash-lite',
+    'models/gemini-1.5-flash-latest',
+    'models/gemini-1.5-flash',
+    'models/gemini-pro'
+  ];
   const $ = id => document.getElementById(id);
 
   function readJson(key, fallback = {}) {
@@ -77,10 +84,30 @@
     row.appendChild(avatar); row.appendChild(msg); chat.appendChild(row); chat.scrollTop = chat.scrollHeight;
   }
 
-  async function askDirect(question) {
-    const browserKey = localStorage.getItem('GEMINI_BROWSER_KEY');
-    if (!browserKey) throw new Error('Aucune clé Gemini locale configurée.');
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + encodeURIComponent(browserKey);
+  async function listAvailableModels(key) {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key);
+    const response = await fetch(url);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.message || 'Impossible de lister les modèles Gemini.');
+    return (data.models || []).filter(model => (model.supportedGenerationMethods || []).includes('generateContent'));
+  }
+
+  async function selectModel(key) {
+    const cached = localStorage.getItem(MODEL_CACHE_KEY);
+    if (cached) return cached;
+
+    const models = await listAvailableModels(key);
+    const names = models.map(model => model.name);
+    const preferred = PREFERRED_MODELS.find(name => names.includes(name));
+    const selected = preferred || names.find(name => name.includes('flash')) || names[0];
+
+    if (!selected) throw new Error('Aucun modèle Gemini compatible generateContent trouvé avec cette clé.');
+    localStorage.setItem(MODEL_CACHE_KEY, selected);
+    return selected;
+  }
+
+  async function generateWithModel(key, modelName, question) {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/' + modelName + ':generateContent?key=' + encodeURIComponent(key);
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,6 +119,21 @@
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data?.error?.message || 'Erreur Gemini directe.');
     return data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim() || 'Je n’ai pas reçu de réponse.';
+  }
+
+  async function askDirect(question) {
+    const browserKey = localStorage.getItem('GEMINI_BROWSER_KEY');
+    if (!browserKey) throw new Error('Aucune clé Gemini locale configurée.');
+
+    let modelName = await selectModel(browserKey);
+    try {
+      return await generateWithModel(browserKey, modelName, question);
+    } catch (error) {
+      // Si le modèle sauvegardé n'est plus disponible, on efface le cache et on réessaie une fois.
+      localStorage.removeItem(MODEL_CACHE_KEY);
+      modelName = await selectModel(browserKey);
+      return await generateWithModel(browserKey, modelName, question);
+    }
   }
 
   async function askBackend(question) {
@@ -113,10 +155,11 @@
   async function submitGemini(question) {
     addUserMessage(question);
     const input = $('aiQuestionInput'); if (input) input.value = '';
-    const loading = addBotMessage(localStorage.getItem('GEMINI_BROWSER_KEY') ? 'Je réfléchis avec Gemini direct…' : 'Je réfléchis avec Gemini…');
+    const loading = addBotMessage(localStorage.getItem('GEMINI_BROWSER_KEY') ? 'Je cherche le meilleur modèle Gemini disponible…' : 'Je réfléchis avec Gemini…');
     try {
       const answer = await askGemini(question);
-      if (loading) loading.textContent = answer;
+      const model = localStorage.getItem(MODEL_CACHE_KEY);
+      if (loading) loading.textContent = model ? `${answer}\n\nModèle utilisé : ${model.replace('models/', '')}` : answer;
     } catch (error) {
       if (loading) loading.textContent = `Gemini n’est pas disponible pour le moment. ${error.message || ''}`.trim();
     }
