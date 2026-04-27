@@ -207,6 +207,22 @@
     setTimeout(() => el.classList.remove('show'), 1400);
   }
 
+  function persistDeletion(key) {
+    // Wait long enough for the app to load the selected date into the form,
+    // then clear fields and let the app's normal autosave handlers run.
+    selectDate(key);
+    setTimeout(() => {
+      clearFormFields();
+      cleanStorageForDate(key);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('hours-data-updated', { detail: { key, source: 'week-direct-clear' } }));
+      document.dispatchEvent(new Event('week-tools-refresh'));
+
+      // Small reliable reload: UI already updated instantly, but this confirms the app reloads from clean data.
+      setTimeout(() => location.reload(), 300);
+    }, 450);
+  }
+
   function handle(e) {
     const btn = e.target?.closest?.('[data-delete-row-swipe]');
     if (!btn || busy) return;
@@ -233,18 +249,7 @@
     removeCalendarDot(key);
     toast('Journée supprimée');
 
-    // Then clear underlying data without a full page reload.
-    setTimeout(() => {
-      selectDate(key);
-      setTimeout(() => {
-        clearFormFields();
-        cleanStorageForDate(key);
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new CustomEvent('hours-data-updated', { detail: { key, source: 'week-direct-clear' } }));
-        document.dispatchEvent(new Event('week-tools-refresh'));
-        busy = false;
-      }, 80);
-    }, 20);
+    persistDeletion(key);
   }
 
   window.addEventListener('click', handle, true);
