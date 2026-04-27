@@ -6,6 +6,24 @@
   window.__weekDeleteFixLoaded = true;
 
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const MONTHS = {
+    janv: 0, janvier: 0,
+    fevr: 1, fevrier: 1, févr: 1, février: 1,
+    mars: 2,
+    avr: 3, avril: 3,
+    mai: 4,
+    juin: 5,
+    juil: 6, juillet: 6,
+    aout: 7, août: 7,
+    sept: 8, septembre: 8,
+    oct: 9, octobre: 9,
+    nov: 10, novembre: 10,
+    dec: 11, décembre: 11, decembre: 11
+  };
+
+  function normalize(text) {
+    return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\./g, '').trim();
+  }
 
   function dkey(date) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -30,6 +48,12 @@
     const input = document.querySelector('input[type="date"]');
     const d = parseISODate(input?.value);
     if (d) return d;
+    const selectedDay = document.querySelector('.cal-day.selected:not(.empty) .cal-day-num, .cal-day.selected:not(.empty)');
+    const n = Number((selectedDay?.textContent || '').match(/\d+/)?.[0]);
+    if (n) {
+      const today = new Date();
+      return new Date(today.getFullYear(), today.getMonth(), n);
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
@@ -41,7 +65,42 @@
     return Array.from({ length: 7 }, (_, i) => dkey(addDays(d, i)));
   }
 
+  function calendarVisibleYearMonth() {
+    const selected = selectedDate();
+    const title = document.querySelector('.cal-month')?.textContent || '';
+    const t = normalize(title);
+    const yearMatch = t.match(/20\d{2}/);
+    const year = yearMatch ? Number(yearMatch[0]) : selected.getFullYear();
+    let month = selected.getMonth();
+    Object.keys(MONTHS).forEach(name => {
+      if (t.includes(name)) month = MONTHS[name];
+    });
+    return { year, month };
+  }
+
+  function parseRowVisibleDate(wrap) {
+    const sub = normalize(wrap?.querySelector('.week-day-sub')?.textContent || '');
+    const m = sub.match(/(\d{1,2})\s+([a-zA-Zéûûîïôàèùç]+)/i);
+    if (!m) return null;
+    const day = Number(m[1]);
+    const monthName = normalize(m[2]);
+    const ym = calendarVisibleYearMonth();
+    const month = MONTHS[monthName] ?? ym.month;
+    let year = ym.year;
+
+    // Si la semaine traverse janvier/décembre, ajuste l'année autour du mois visible.
+    if (ym.month === 0 && month === 11) year -= 1;
+    if (ym.month === 11 && month === 0) year += 1;
+
+    if (!day || month == null) return null;
+    const d = new Date(year, month, day);
+    d.setHours(0, 0, 0, 0);
+    return dkey(d);
+  }
+
   function rowKey(wrap) {
+    const visible = parseRowVisibleDate(wrap);
+    if (visible) return visible;
     const rows = Array.from(document.querySelectorAll('.week-list > .week-row-swipe-wrap'));
     const index = rows.indexOf(wrap);
     return index >= 0 ? weekKeys()[index] : null;
@@ -80,7 +139,7 @@
   }
 
   function deleteDeep(value, keysSet, depth = 0) {
-    if (!value || typeof value !== 'object' || depth > 5) return { value, removed: 0, changed: false };
+    if (!value || typeof value !== 'object' || depth > 8) return { value, removed: 0, changed: false };
 
     if (Array.isArray(value)) {
       let removedNested = 0;
@@ -108,15 +167,14 @@
     const out = { ...value };
 
     Object.keys(out).forEach(prop => {
-      // Direct object keyed by date: { "2026-04-27": {...} }
-      if (keysSet.has(prop.slice(0, 10)) && hasValue(out[prop])) {
+      const propDate = prop.slice(0, 10);
+      if (keysSet.has(propDate) && hasValue(out[prop])) {
         delete out[prop];
         removed++;
         changed = true;
         return;
       }
 
-      // Object with nested values keyed by date.
       const child = out[prop];
       if (child && typeof child === 'object') {
         const childDate = itemDateKey(child);
@@ -144,13 +202,13 @@
     let removed = 0;
     const changedKeys = [];
 
-    const keys = [];
+    const storageKeys = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k) keys.push(k);
+      if (k) storageKeys.push(k);
     }
 
-    keys.forEach(storageKey => {
+    storageKeys.forEach(storageKey => {
       const data = readJson(storageKey);
       if (!data || typeof data !== 'object') return;
 
@@ -169,7 +227,7 @@
       at: new Date().toISOString()
     }));
 
-    return { removed, changedKeys };
+    return { removed, changedKeys, dateKeys };
   }
 
   function toast(msg) {
@@ -188,7 +246,7 @@
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('hours-data-updated', { detail: { source: 'week-delete-fix', result } }));
     document.dispatchEvent(new Event('week-tools-refresh'));
-    toast(result.removed ? `Supprimé (${result.removed})` : 'Aucune donnée trouvée');
+    toast(result.removed ? `Supprimé (${result.removed})` : `Aucune donnée trouvée (${(result.dateKeys || []).join(', ')})`);
     setTimeout(() => location.reload(), 450);
   }
 
@@ -199,7 +257,7 @@
       e.stopImmediatePropagation();
       const wrap = rowDelete.closest('.week-row-swipe-wrap');
       const key = rowKey(wrap);
-      if (!key) return refresh({ removed: 0, changedKeys: [] });
+      if (!key) return refresh({ removed: 0, changedKeys: [], dateKeys: [] });
       wrap?.classList.add('deleting');
       return refresh(deleteFromStorage([key]));
     }
