@@ -204,13 +204,13 @@
     }
     el.textContent = msg;
     el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 1400);
+    setTimeout(() => el.classList.remove('show'), 1200);
   }
 
   function persistDeletion(key) {
-    // Wait long enough for the app to load the selected date into the form,
-    // then clear fields and let the app's normal autosave handlers run.
     selectDate(key);
+
+    // Fast path: the app usually updates the selected day immediately after selectDate().
     setTimeout(() => {
       clearFormFields();
       cleanStorageForDate(key);
@@ -218,9 +218,9 @@
       window.dispatchEvent(new CustomEvent('hours-data-updated', { detail: { key, source: 'week-direct-clear' } }));
       document.dispatchEvent(new Event('week-tools-refresh'));
 
-      // Small reliable reload: UI already updated instantly, but this confirms the app reloads from clean data.
-      setTimeout(() => location.reload(), 300);
-    }, 450);
+      // Short reliable reload, much faster than before.
+      setTimeout(() => location.reload(), 90);
+    }, 120);
   }
 
   function handle(e) {
