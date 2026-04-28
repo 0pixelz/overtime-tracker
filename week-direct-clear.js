@@ -1,6 +1,6 @@
 // week-direct-clear.js
-// Supprime rapidement une ligne de Ma semaine en vidant directement
-// les champs du formulaire principal: début, fin, repas, note.
+// Supprime une ligne de Ma semaine en déclenchant le même bouton natif
+// que "Effacer cette journée" dans le formulaire du haut.
 (() => {
   if (window.__weekDirectClearLoaded) return;
   window.__weekDirectClearLoaded = true;
@@ -63,92 +63,6 @@
     if (target) target.click();
   }
 
-  function clearFormFields() {
-    Array.from(document.querySelectorAll('input[type="time"]')).forEach(el => {
-      el.value = '';
-      fire(el);
-    });
-
-    Array.from(document.querySelectorAll('textarea')).forEach(el => {
-      el.value = '';
-      fire(el);
-    });
-
-    Array.from(document.querySelectorAll('input:not([type="date"]):not([type="time"])')).forEach(el => {
-      const label = norm(`${el.id} ${el.name} ${el.placeholder} ${el.className}`);
-      if (label.includes('debut') || label.includes('fin') || label.includes('start') || label.includes('end') || label.includes('note')) {
-        el.value = '';
-        fire(el);
-      }
-    });
-
-    Array.from(document.querySelectorAll('select')).forEach(el => {
-      const label = norm(`${el.id} ${el.name} ${el.className}`);
-      if (label.includes('repas') || label.includes('meal') || label.includes('pause') || el.options.length <= 8) {
-        el.selectedIndex = 0;
-        fire(el);
-      }
-    });
-
-    const travailBtn = Array.from(document.querySelectorAll('button')).find(b => norm(b.textContent) === 'travail');
-    if (travailBtn && !travailBtn.classList.contains('active')) travailBtn.click();
-  }
-
-  function cleanStorageForDate(key) {
-    const formats = [
-      key,
-      key.replaceAll('-', '/'),
-      key.replaceAll('-', ''),
-      `${Number(key.slice(8,10))}/${Number(key.slice(5,7))}/${key.slice(0,4)}`,
-      `${key.slice(8,10)}/${key.slice(5,7)}/${key.slice(0,4)}`
-    ].map(norm);
-
-    function matches(v) {
-      const s = norm(v);
-      return formats.some(f => s.includes(f));
-    }
-
-    function clean(value, depth = 0) {
-      if (!value || typeof value !== 'object' || depth > 8) return { value, changed:false };
-      if (Array.isArray(value)) {
-        let changed = false;
-        const next = [];
-        value.forEach(item => {
-          if (matches(JSON.stringify(item))) { changed = true; return; }
-          const r = clean(item, depth + 1);
-          changed = changed || r.changed;
-          next.push(r.value);
-        });
-        return { value: next, changed };
-      }
-      const out = { ...value };
-      let changed = false;
-      Object.keys(out).forEach(k => {
-        if (matches(k)) { delete out[k]; changed = true; return; }
-        if (out[k] && typeof out[k] === 'object') {
-          if (matches(JSON.stringify(out[k]))) { delete out[k]; changed = true; return; }
-          const r = clean(out[k], depth + 1);
-          if (r.changed) { out[k] = r.value; changed = true; }
-        }
-      });
-      return { value: out, changed };
-    }
-
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k) keys.push(k);
-    }
-    keys.forEach(k => {
-      if (matches(k)) { localStorage.removeItem(k); return; }
-      try {
-        const data = JSON.parse(localStorage.getItem(k));
-        const r = clean(data);
-        if (r.changed) localStorage.setItem(k, JSON.stringify(r.value));
-      } catch {}
-    });
-  }
-
   function parseHours(text) {
     const n = Number(String(text || '').replace(',', '.').match(/-?\d+(?:[.,]\d+)?/)?.[0]?.replace(',', '.') || 0);
     return Number.isFinite(n) ? n : 0;
@@ -207,20 +121,32 @@
     setTimeout(() => el.classList.remove('show'), 1200);
   }
 
-  function persistDeletion(key) {
-    selectDate(key);
+  function findNativeClearButton() {
+    const byClass = document.querySelector('.clear-day-btn');
+    if (byClass) return byClass;
 
-    // Fast path: the app usually updates the selected day immediately after selectDate().
+    return Array.from(document.querySelectorAll('button')).find(btn => {
+      const t = norm(btn.textContent);
+      return t.includes('effacer') && (t.includes('journee') || t.includes('journée'));
+    }) || null;
+  }
+
+  function clickNativeClearButton(done) {
+    const btn = findNativeClearButton();
+    if (!btn) {
+      done(false);
+      return;
+    }
+
+    btn.click();
+
+    // Même effet que l'utilisateur: premier clic active la confirmation,
+    // deuxième clic confirme "Effacer cette journée".
     setTimeout(() => {
-      clearFormFields();
-      cleanStorageForDate(key);
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('hours-data-updated', { detail: { key, source: 'week-direct-clear' } }));
-      document.dispatchEvent(new Event('week-tools-refresh'));
-
-      // Short reliable reload, much faster than before.
-      setTimeout(() => location.reload(), 90);
-    }, 120);
+      const confirmBtn = document.querySelector('.clear-day-btn.confirm') || findNativeClearButton();
+      if (confirmBtn) confirmBtn.click();
+      setTimeout(() => done(true), 260);
+    }, 180);
   }
 
   function handle(e) {
@@ -243,13 +169,23 @@
     const removedHours = parseHours(wrap?.querySelector('.week-day-hours')?.textContent || '0');
     localStorage.setItem('weekDirectClearLastDate', key);
 
-    // Instant UI update first.
+    // Feedback instantané.
     clearVisibleRow(wrap);
     updateWeekTotal(removedHours);
     removeCalendarDot(key);
     toast('Journée supprimée');
 
-    persistDeletion(key);
+    // Sélectionne la journée, attend que le formulaire du haut soit chargé,
+    // puis déclenche exactement le bouton natif Effacer cette journée.
+    selectDate(key);
+    setTimeout(() => {
+      clickNativeClearButton(() => {
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('hours-data-updated', { detail: { key, source: 'week-direct-clear-native' } }));
+        document.dispatchEvent(new Event('week-tools-refresh'));
+        setTimeout(() => location.reload(), 180);
+      });
+    }, 320);
   }
 
   window.addEventListener('click', handle, true);
